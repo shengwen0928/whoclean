@@ -67,3 +67,39 @@ export function getRandomGradient() {
 export function generateId() {
     return Math.random().toString(36).substr(2, 9);
 }
+
+/**
+ * 計算兩個週數字串之間的週數差 (week2 - week1)
+ * @param {string} weekStr1 - "YYYY-Www" 格式
+ * @param {string} weekStr2 - "YYYY-Www" 格式
+ * @returns {number} 週數差
+ */
+export function getWeekDiff(weekStr1, weekStr2) {
+    if (weekStr1 === weekStr2) return 0;
+    
+    const parseWeek = (wStr) => {
+        const [year, week] = wStr.split('-W');
+        return { y: parseInt(year, 10), w: parseInt(week, 10) };
+    };
+    
+    const w1 = parseWeek(weekStr1);
+    const w2 = parseWeek(weekStr2);
+    
+    const getMondayOfISOWeek = (y, w) => {
+        const simple = new Date(y, 0, 1 + (w - 1) * 7);
+        const dow = simple.getDay();
+        const ISOweekStart = new Date(simple);
+        if (dow <= 4) {
+            ISOweekStart.setDate(simple.getDate() - simple.getDay() + 1);
+        } else {
+            ISOweekStart.setDate(simple.getDate() + 8 - simple.getDay());
+        }
+        return ISOweekStart;
+    };
+    
+    const d1 = getMondayOfISOWeek(w1.y, w1.w);
+    const d2 = getMondayOfISOWeek(w2.y, w2.w);
+    
+    const diffMs = d2 - d1;
+    return Math.round(diffMs / (1000 * 60 * 60 * 24 * 7));
+}

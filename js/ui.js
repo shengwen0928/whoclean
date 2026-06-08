@@ -1,7 +1,4 @@
-/**
- * UI 渲染與 DOM 操作模組
- */
-import { getMembers, getSchedule, getHistory, addMember, removeMember, updateWeekCleaner, completeDuty } from './storage.js';
+import { getMembers, getSchedule, addMember, removeMember, updateWeekCleaner, moveMemberUp, moveMemberDown } from './storage.js';
 import { getYearWeekString, getWeekRangeText } from './utils.js';
 
 // DOM 元素快取
@@ -27,9 +24,6 @@ const elements = {
     btnCloseModal: document.getElementById('btn-close-modal'),
     btnCancelModal: document.getElementById('btn-cancel-modal'),
     btnSaveModal: document.getElementById('btn-save-modal'),
-    
-    // 快速排班
-    btnQuickSchedule: document.getElementById('btn-quick-schedule'),
 };
 
 let activeEditingWeekKey = null;
@@ -108,12 +102,36 @@ export function renderMembers() {
                     <div class="member-count">輪值順序：第 ${idx + 1} 順位</div>
                 </div>
             </div>
-            <button class="btn-icon danger delete-member-btn" data-id="${m.id}" title="刪除成員">
-                <i class="fa-regular fa-trash-can"></i>
-            </button>
+            <div style="display: flex; gap: 0.5rem; align-items: center;">
+                <button class="btn-icon move-up-btn" data-id="${m.id}" title="上移順序" ${idx === 0 ? 'disabled style="opacity: 0.3; cursor: not-allowed;"' : ''}>
+                    <i class="fa-solid fa-chevron-up"></i>
+                </button>
+                <button class="btn-icon move-down-btn" data-id="${m.id}" title="下移順序" ${idx === members.length - 1 ? 'disabled style="opacity: 0.3; cursor: not-allowed;"' : ''}>
+                    <i class="fa-solid fa-chevron-down"></i>
+                </button>
+                <button class="btn-icon danger delete-member-btn" data-id="${m.id}" title="刪除成員">
+                    <i class="fa-regular fa-trash-can"></i>
+                </button>
+            </div>
         `;
         
-        // 綁定刪除事件
+        // 綁定上移/下移/刪除事件
+        const upBtn = item.querySelector('.move-up-btn');
+        const downBtn = item.querySelector('.move-down-btn');
+        
+        if (upBtn) {
+            upBtn.addEventListener('click', () => {
+                moveMemberUp(m.id);
+                renderAll();
+            });
+        }
+        if (downBtn) {
+            downBtn.addEventListener('click', () => {
+                moveMemberDown(m.id);
+                renderAll();
+            });
+        }
+        
         item.querySelector('.delete-member-btn').addEventListener('click', (e) => {
             const id = e.currentTarget.getAttribute('data-id');
             const memberName = m.name;
@@ -236,75 +254,6 @@ export function closeEditModal() {
     activeEditingWeekKey = null;
 }
 
-// 快速自動排班演算法
-// 依成員清單順序進行嚴格的單人輪替排班 (N 個人就是 N 週輪完一次)
-export function runQuickSchedule() {
-    const members = getMembers();
-    if (members.length === 0) {
-        alert('請先新增成員再進行排班！');
-        return;
-    }
-
-    const schedule = getSchedule();
-    const history = getHistory();
-    const today = new Date();
-    
-    // 1. 取得需要排班的週數清單 (本週與接下來的 3 週，共 4 週)
-    const targetWeeks = [];
-    for (let i = 0; i < 4; i++) {
-        const targetDate = new Date(today);
-        targetDate.setDate(today.getDate() + (i * 7));
-        targetWeeks.push(getYearWeekString(targetDate));
-    }
-
-    // 2. 尋找「最後一次打掃」的成員索引，做為輪替的起始點
-    let lastIdx = -1;
-
-    // 先從歷史紀錄找最近一次打掃的人
-    if (history.length > 0) {
-        const lastHistory = history[0]; // 歷史紀錄最上面是最新的一筆
-        if (lastHistory.cleaners && lastHistory.cleaners.length > 0) {
-            const lastCleanerId = lastHistory.cleaners[0].id;
-            lastIdx = members.findIndex(m => m.id === lastCleanerId);
-        }
-    }
-
-    // 如果歷史沒有，則看看排班表中，在我們即將排班的最早一週之前，有沒有已排定的人
-    if (lastIdx === -1 && schedule.length > 0) {
-        // 找出所有已排班且有指派人員的週，並依週數排序
-        const scheduledWeeks = schedule
-            .filter(s => s.cleanerIds && s.cleanerIds.length > 0 && !targetWeeks.includes(s.weekKey))
-            .sort((a, b) => b.weekKey.localeCompare(a.weekKey)); // 最新的在前
-        
-        if (scheduledWeeks.length > 0) {
-            const lastScheduledCleanerId = scheduledWeeks[0].cleanerIds[0];
-            lastIdx = members.findIndex(m => m.id === lastScheduledCleanerId);
-        }
-    }
-
-    // 3. 開始為目標四週進行嚴格輪替排班
-    targetWeeks.forEach(weekKey => {
-        const existing = schedule.find(s => s.weekKey === weekKey);
-        
-        if (existing && existing.cleanerIds && existing.cleanerIds.length > 0) {
-            // 如果這週已經有排定的人，我們不覆蓋它，但更新輪替指針以順延下一週的人
-            const currentCleanerId = existing.cleanerIds[0];
-            const currentIdx = members.findIndex(m => m.id === currentCleanerId);
-            if (currentIdx !== -1) {
-                lastIdx = currentIdx;
-            }
-        } else {
-            // 計算下一位值日生的索引
-            lastIdx = (lastIdx + 1) % members.length;
-            const nextCleaner = members[lastIdx];
-            updateWeekCleaner(weekKey, [nextCleaner.id]);
-        }
-    });
-
-    renderAll();
-    alert('已成功為您依成員順序，自動輪替生成未來四週的排班表！');
-}
-
 // 註冊所有 UI 事件監聽器
 export function setupEventListeners() {
     // 新增成員
@@ -335,9 +284,6 @@ export function setupEventListeners() {
         closeEditModal();
         renderAll();
     });
-
-    // 快速排班按鈕
-    elements.btnQuickSchedule.addEventListener('click', runQuickSchedule);
 }
 
 // 刷新全部 UI 面板

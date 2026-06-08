@@ -1,25 +1,19 @@
 /**
  * 資料存取管理模組 (LocalStorage)
  */
-import { getYearWeekString, getWeekRangeText, getRandomGradient, generateId } from './utils.js';
+import { getYearWeekString, getWeekRangeText, getRandomGradient, generateId, getWeekDiff } from './utils.js';
 
 const STORAGE_KEYS = {
     MEMBERS: 'whoclean_members',
-    SCHEDULE: 'whoclean_schedule',
-    HISTORY: 'whoclean_history',
+    ROTATION_ANCHOR: 'whoclean_rotation_anchor',
 };
-
-const DEFAULT_MEMBERS = [];
 
 export function initStorage() {
     if (!localStorage.getItem(STORAGE_KEYS.MEMBERS)) {
         localStorage.setItem(STORAGE_KEYS.MEMBERS, JSON.stringify([]));
     }
-    if (!localStorage.getItem(STORAGE_KEYS.SCHEDULE)) {
-        localStorage.setItem(STORAGE_KEYS.SCHEDULE, JSON.stringify([]));
-    }
-    if (!localStorage.getItem(STORAGE_KEYS.HISTORY)) {
-        localStorage.setItem(STORAGE_KEYS.HISTORY, JSON.stringify([]));
+    if (!localStorage.getItem(STORAGE_KEYS.ROTATION_ANCHOR)) {
+        localStorage.setItem(STORAGE_KEYS.ROTATION_ANCHOR, JSON.stringify(null));
     }
 }
 
@@ -50,62 +44,91 @@ export function removeMember(id) {
     saveMembers(members);
 }
 
-export function getSchedule() {
-    return JSON.parse(localStorage.getItem(STORAGE_KEYS.SCHEDULE)) || [];
-}
-
-export function saveSchedule(schedule) {
-    localStorage.setItem(STORAGE_KEYS.SCHEDULE, JSON.stringify(schedule));
-}
-
-export function updateWeekCleaner(weekKey, cleanerIds) {
-    const schedule = getSchedule();
-    const index = schedule.findIndex(s => s.weekKey === weekKey);
-    if (index !== -1) {
-        schedule[index].cleanerIds = cleanerIds;
-    } else {
-        schedule.push({
-            weekKey,
-            dateRange: getWeekRangeText(weekKey),
-            cleanerIds,
-            status: 'pending',
-            completedAt: null
-        });
-    }
-    saveSchedule(schedule);
-}
-
-export function completeDuty(weekKey) {
-    const schedule = getSchedule();
-    const index = schedule.findIndex(s => s.weekKey === weekKey);
-    if (index !== -1 && schedule[index].status !== 'completed') {
-        schedule[index].status = 'completed';
-        schedule[index].completedAt = new Date().toISOString();
-        saveSchedule(schedule);
-
-        // 新增至歷史紀錄
-        const members = getMembers();
-        const cleaners = schedule[index].cleanerIds.map(cid => {
-            const m = members.find(member => member.id === cid);
-            return m ? { id: m.id, name: m.name } : { id: cid, name: '未知成員' };
-        });
-
-        const history = getHistory();
-        history.unshift({
-            id: generateId(),
-            weekKey,
-            dateRange: schedule[index].dateRange,
-            cleaners,
-            completedAt: schedule[index].completedAt
-        });
-        saveHistory(history);
+export function moveMemberUp(id) {
+    const members = getMembers();
+    const idx = members.findIndex(m => m.id === id);
+    if (idx > 0) {
+        const temp = members[idx];
+        members[idx] = members[idx - 1];
+        members[idx - 1] = temp;
+        saveMembers(members);
         return true;
     }
     return false;
 }
 
-export function getHistory() {
-    return JSON.parse(localStorage.getItem(STORAGE_KEYS.HISTORY)) || [];
+export function moveMemberDown(id) {
+    const members = getMembers();
+    const idx = members.findIndex(m => m.id === id);
+    if (idx !== -1 && idx < members.length - 1) {
+        const temp = members[idx];
+        members[idx] = members[idx + 1];
+        members[idx + 1] = temp;
+        saveMembers(members);
+        return true;
+    }
+    return false;
+}
+
+export function getRotationAnchor() {
+    return JSON.parse(localStorage.getItem(STORAGE_KEYS.ROTATION_ANCHOR)) || null;
+}
+
+export function saveRotationAnchor(anchor) {
+    localStorage.setItem(STORAGE_KEYS.ROTATION_ANCHOR, JSON.stringify(anchor));
+}
+
+// 動態排班計算：依據成員順序與週數偏移量，永遠輪流
+export function getSchedule() {
+    const members = getMembers();
+    if (members.length === 0) return [];
+
+    let anchor = getRotationAnchor();
+    const today = new Date();
+    const thisWeekKey = getYearWeekString(today);
+    
+    // 若無錨點或錨點的成員已被刪除，則以本週排第一個成員為新錨點
+    if (!anchor || !members.some(m => m.id === anchor.memberId)) {
+        anchor = {
+            weekKey: thisWeekKey,
+            memberId: members[0].id
+        };
+        saveRotationAnchor(anchor);
+    }
+
+    const anchorIdx = members.findIndex(m => m.id === anchor.memberId);
+    
+    // 動態產生前 2 週到後 5 週，共 8 週的自動排班
+    const schedule = [];
+    for (let i = -2; i <= 5; i++) {
+        const targetDate = new Date(today);
+        targetDate.setDate(today.getDate() + (i * 7));
+        const weekKey = getYearWeekString(targetDate);
+        
+        // 計算與錨點週的差值
+        const diff = getWeekDiff(anchor.weekKey, weekKey);
+        
+        // 算出循環對應的成員索引
+        const cleanerIdx = ((anchorIdx + diff) % members.length + members.length) % members.length;
+        const cleaner = members[cleanerIdx];
+        
+        schedule.push({
+            weekKey,
+            dateRange: getWeekRangeText(weekKey),
+            cleanerIds: cleaner ? [cleaner.id] : []
+        });
+    }
+    return schedule;
+}
+
+export function updateWeekCleaner(weekKey, cleanerIds) {
+    if (cleanerIds.length > 0) {
+        // 設定新的輪替錨點
+        saveRotationAnchor({
+            weekKey,
+            memberId: cleanerIds[0]
+        });
+    }
 }
 
 export function saveHistory(history) {
