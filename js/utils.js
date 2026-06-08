@@ -103,3 +103,74 @@ export function getWeekDiff(weekStr1, weekStr2) {
     const diffMs = d2 - d1;
     return Math.round(diffMs / (1000 * 60 * 60 * 24 * 7));
 }
+
+/**
+ * 取得指定週數的起始與結束 Date 物件 (星期一與星期五)
+ * @param {string} weekStr - "YYYY-Www" 格式
+ * @returns {{start: Date, end: Date}} 起始與結束日期
+ */
+export function getWeekStartEndDates(weekStr) {
+    const [year, week] = weekStr.split('-W');
+    const w = parseInt(week, 10);
+    const simple = new Date(year, 0, 1 + (w - 1) * 7);
+    const dow = simple.getDay();
+    const ISOweekStart = simple;
+    if (dow <= 4) {
+        ISOweekStart.setDate(simple.getDate() - simple.getDay() + 1);
+    } else {
+        ISOweekStart.setDate(simple.getDate() + 8 - simple.getDay());
+    }
+    
+    const start = new Date(ISOweekStart);
+    const end = new Date(ISOweekStart);
+    end.setDate(start.getDate() + 4); // 星期五
+    return { start, end };
+}
+
+/**
+ * 產生並下載 .ics 檔案，以供匯入 Google/Outlook 行事曆
+ * @param {string} weekKey - 週數字串 (YYYY-Www)
+ * @param {string} cleanerNames - 值日生姓名
+ */
+export function downloadIcsFile(weekKey, cleanerNames) {
+    const { start, end } = getWeekStartEndDates(weekKey);
+    
+    // 格式化 YYYYMMDD 字串
+    const formatYmd = (d) => `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, '0')}${String(d.getDate()).padStart(2, '0')}`;
+    const startDateStr = formatYmd(start);
+    
+    // 依據 RFC 5545 規範，全天行程的結束日期 (DTEND) 是排除在外的，所以要把星期五 + 1天變星期六
+    const exclusiveEnd = new Date(end);
+    exclusiveEnd.setDate(exclusiveEnd.getDate() + 1);
+    const endDateStr = formatYmd(exclusiveEnd);
+    
+    const cleanerStr = cleanerNames || '值日生';
+    
+    const icsContent = [
+        'BEGIN:VCALENDAR',
+        'VERSION:2.0',
+        'PRODID:-//WhoClean//Duty Calendar//ZH',
+        'BEGIN:VEVENT',
+        `UID:whoclean-${weekKey}-${Date.now()}@whoclean.local`,
+        `DTSTAMP:${formatYmd(new Date())}T000000Z`,
+        `DTSTART;VALUE=DATE:${startDateStr}`,
+        `DTEND;VALUE=DATE:${endDateStr}`,
+        `SUMMARY:🧹 WhoClean 值日生打掃輪值 (${cleanerStr})`,
+        `DESCRIPTION:本週（${weekKey}）由 ${cleanerStr} 負責值日打掃。提醒記得抽空清潔環境，維護整潔！`,
+        'BEGIN:VALARM',
+        'TRIGGER:PT9H', // 星期一早上 9:00 提醒
+        'ACTION:DISPLAY',
+        'DESCRIPTION:WhoClean Reminder',
+        'END:VALARM',
+        'END:VEVENT',
+        'END:VCALENDAR'
+    ].join('\r\n');
+    
+    const blob = new Blob([icsContent], { type: 'text/calendar;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.setAttribute('download', `whoclean_${weekKey}.ics`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+}

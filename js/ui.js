@@ -1,5 +1,5 @@
 import { getMembers, getSchedule, addMember, removeMember, updateWeekCleaner, moveMemberUp, moveMemberDown, getTeamsWebhookUrl, saveTeamsWebhookUrl } from './storage.js';
-import { getYearWeekString, getWeekRangeText } from './utils.js';
+import { getYearWeekString, getWeekRangeText, downloadIcsFile } from './utils.js';
 import { getMicrosoftClientId, saveMicrosoftClientId, getCurrentUser, login, logout, saveDemoUser } from './auth.js';
 
 // DOM 元素快取
@@ -150,6 +150,9 @@ export function renderHero() {
         <button class="btn btn-primary" id="btn-edit-current">
             <i class="fa-solid fa-user-pen"></i> 修改人員
         </button>
+        <button class="btn btn-secondary" id="btn-hero-ics" style="background: rgba(255, 255, 255, 0.05); color: var(--text-primary); border-color: var(--border-color);">
+            <i class="fa-regular fa-calendar-plus"></i> 加至我的行事曆
+        </button>
         <button class="btn btn-secondary" id="btn-send-teams" style="background: rgba(98, 100, 167, 0.15); color: #8f92d1; border-color: rgba(98, 100, 167, 0.3);">
             <i class="fa-brands fa-microsoft-teams"></i> 頻道通知
         </button>
@@ -172,6 +175,10 @@ export function renderHero() {
     // 綁定動態生成的按鈕事件
     document.getElementById('btn-edit-current').onclick = () => openEditModal(currentWeekKey);
     document.getElementById('btn-send-teams').onclick = sendTeamsNotification;
+    document.getElementById('btn-hero-ics').onclick = () => {
+        const cleanerNames = activeCleaners.map(ac => ac.name).join(', ');
+        downloadIcsFile(currentWeekKey, cleanerNames);
+    };
 }
 
 // 渲染成員列表
@@ -309,11 +316,19 @@ export function renderSchedule() {
                 <button class="btn btn-secondary btn-edit-week" data-week="${s.weekKey}" style="padding: 0.4rem 0.8rem; font-size: 0.8rem;">
                     <i class="fa-regular fa-pen-to-square"></i> 修改
                 </button>
+                <button class="btn btn-secondary btn-ics-week" data-week="${s.weekKey}" style="padding: 0.4rem 0.6rem; font-size: 0.8rem; margin-left: 0.25rem;" title="下載行事曆提醒 (.ics)">
+                    <i class="fa-regular fa-calendar-plus"></i>
+                </button>
             </div>
         `;
 
         item.querySelector('.btn-edit-week').addEventListener('click', () => {
             openEditModal(s.weekKey);
+        });
+
+        item.querySelector('.btn-ics-week').addEventListener('click', () => {
+            const cleanerNames = activeCleaners.map(ac => ac.name).join(', ');
+            downloadIcsFile(s.weekKey, cleanerNames);
         });
 
         elements.scheduleContainer.appendChild(item);
