@@ -17,9 +17,9 @@ export function getYearWeekString(d) {
 }
 
 /**
- * 取得指定週數的起始與結束日期文字 (星期一到星期日)
+ * 取得指定週數的起始與結束日期文字 (星期一到星期五，排除六日)
  * @param {string} weekStr - "YYYY-Www" 格式的週數
- * @returns {string} 日期範圍字串，例如 "06/08 ~ 06/14"
+ * @returns {string} 日期範圍字串，例如 "06/08 ~ 06/12"
  */
 export function getWeekRangeText(weekStr) {
     const [year, week] = weekStr.split('-W');
@@ -35,7 +35,7 @@ export function getWeekRangeText(weekStr) {
     
     const start = new Date(ISOweekStart);
     const end = new Date(ISOweekStart);
-    end.setDate(start.getDate() + 6);
+    end.setDate(start.getDate() + 4); // 星期一至五，排除六日
     
     const format = (date) => `${String(date.getMonth() + 1).padStart(2, '0')}/${String(date.getDate()).padStart(2, '0')}`;
     return `${format(start)} ~ ${format(end)}`;
