@@ -6,9 +6,9 @@
   "packageName": "com.whoclean.app",
   "developer": {
     "name": "WhoClean",
-    "websiteUrl": "http://localhost:8080",
-    "privacyUrl": "http://localhost:8080",
-    "termsOfUseUrl": "http://localhost:8080"
+    "websiteUrl": "https://shengwen0928.github.io/whoclean",
+    "privacyUrl": "https://shengwen0928.github.io/whoclean",
+    "termsOfUseUrl": "https://shengwen0928.github.io/whoclean"
   },
   "name": {
     "short": "WhoClean",
@@ -28,8 +28,8 @@
     {
       "entityId": "whocleanTab",
       "name": "WhoClean 打掃紀錄",
-      "contentUrl": "http://localhost:8080/index.html",
-      "websiteUrl": "http://localhost:8080/index.html",
+      "contentUrl": "https://shengwen0928.github.io/whoclean/index.html",
+      "websiteUrl": "https://shengwen0928.github.io/whoclean/index.html",
       "scopes": [
         "personal",
         "team"
@@ -41,8 +41,6 @@
     "messageTeamMembers"
   ],
   "validDomains": [
-    "localhost",
-    "*.ngrok-free.app",
-    "*.locall.host"
+    "shengwen0928.github.io"
   ]
 }
