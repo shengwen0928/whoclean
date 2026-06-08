@@ -10,8 +10,6 @@ const elements = {
     heroCleaners: document.getElementById('hero-cleaners-container'),
     heroWeek: document.getElementById('hero-week-str'),
     heroDate: document.getElementById('hero-date-range'),
-    heroStatusBadge: document.getElementById('hero-status-badge'),
-    btnCompleteDuty: document.getElementById('btn-complete-duty'),
     btnEditCurrent: document.getElementById('btn-edit-current'),
     
     scheduleContainer: document.getElementById('schedule-container'),
@@ -20,8 +18,6 @@ const elements = {
     memberCountBadge: document.getElementById('member-count-badge'),
     addMemberForm: document.getElementById('add-member-form'),
     newMemberName: document.getElementById('new-member-name'),
-    
-    historyContainer: document.getElementById('history-container'),
     
     // 彈出視窗
     editModal: document.getElementById('edit-schedule-modal'),
@@ -37,18 +33,6 @@ const elements = {
 };
 
 let activeEditingWeekKey = null;
-
-// 計算成員打掃次數
-function getCleaningCounts() {
-    const history = getHistory();
-    const counts = {};
-    history.forEach(log => {
-        log.cleaners.forEach(c => {
-            counts[c.id] = (counts[c.id] || 0) + 1;
-        });
-    });
-    return counts;
-}
 
 // 取得頭像縮寫文字
 function getAvatarText(name) {
@@ -71,9 +55,6 @@ export function renderHero() {
         elements.heroCleaners.innerHTML = `<span class="hero-cleaner-name" style="color: var(--text-muted)">本週尚未安排值日生</span>`;
         elements.heroWeek.innerHTML = `<i class="fa-regular fa-calendar"></i> ${currentWeekKey}`;
         elements.heroDate.innerHTML = `<i class="fa-solid fa-clock"></i> ${getWeekRangeText(currentWeekKey)}`;
-        elements.heroStatusBadge.className = 'badge badge-pending';
-        elements.heroStatusBadge.innerHTML = `<i class="fa-solid fa-circle-question"></i> 未排班`;
-        elements.btnCompleteDuty.style.display = 'none';
         elements.btnEditCurrent.innerText = '安排值日生';
         elements.btnEditCurrent.onclick = () => openEditModal(currentWeekKey);
         return;
@@ -81,7 +62,6 @@ export function renderHero() {
 
     elements.btnEditCurrent.innerHTML = `<i class="fa-solid fa-user-pen"></i> 修改人員`;
     elements.btnEditCurrent.onclick = () => openEditModal(currentWeekKey);
-    elements.btnCompleteDuty.style.display = currentDuty.status === 'completed' ? 'none' : 'inline-flex';
 
     // 取得所有本週值日生資料
     const activeCleaners = currentDuty.cleanerIds.map(cid => members.find(m => m.id === cid)).filter(Boolean);
@@ -91,7 +71,7 @@ export function renderHero() {
         elements.heroAvatar.style.background = 'rgba(255, 255, 255, 0.05)';
         elements.heroCleaners.innerHTML = `<span class="hero-cleaner-name" style="color: var(--text-muted)">尚未指派人員</span>`;
     } else {
-        // 設定大頭貼（取第一個值日生做為主要代表，或若有多人則混合）
+        // 設定大頭貼
         elements.heroAvatar.innerText = getAvatarText(activeCleaners[0].name);
         elements.heroAvatar.style.background = activeCleaners[0].color;
         
@@ -103,27 +83,11 @@ export function renderHero() {
 
     elements.heroWeek.innerHTML = `<i class="fa-regular fa-calendar"></i> ${currentDuty.weekKey}`;
     elements.heroDate.innerHTML = `<i class="fa-solid fa-clock"></i> ${currentDuty.dateRange}`;
-
-    if (currentDuty.status === 'completed') {
-        elements.heroStatusBadge.className = 'badge badge-completed';
-        elements.heroStatusBadge.innerHTML = `<i class="fa-solid fa-circle-check"></i> 已完成打掃`;
-    } else {
-        elements.heroStatusBadge.className = 'badge badge-pending';
-        elements.heroStatusBadge.innerHTML = `<i class="fa-regular fa-circle-play"></i> 本週待打掃`;
-    }
-
-    elements.btnCompleteDuty.onclick = () => {
-        if (confirm('確定本週打掃工作已完成了嗎？')) {
-            completeDuty(currentWeekKey);
-            renderAll();
-        }
-    };
 }
 
 // 渲染成員列表
 export function renderMembers() {
     const members = getMembers();
-    const counts = getCleaningCounts();
     
     elements.memberCountBadge.innerText = `${members.length} 人`;
     elements.membersContainer.innerHTML = '';
@@ -133,8 +97,7 @@ export function renderMembers() {
         return;
     }
 
-    members.forEach(m => {
-        const count = counts[m.id] || 0;
+    members.forEach((m, idx) => {
         const item = document.createElement('div');
         item.className = 'member-item';
         item.innerHTML = `
@@ -142,7 +105,7 @@ export function renderMembers() {
                 <div class="avatar" style="background: ${m.color}">${getAvatarText(m.name)}</div>
                 <div>
                     <div class="member-name">${m.name}</div>
-                    <div class="member-count">累計打掃 ${count} 次</div>
+                    <div class="member-count">輪值順序：第 ${idx + 1} 順位</div>
                 </div>
             </div>
             <button class="btn-icon danger delete-member-btn" data-id="${m.id}" title="刪除成員">
@@ -154,7 +117,7 @@ export function renderMembers() {
         item.querySelector('.delete-member-btn').addEventListener('click', (e) => {
             const id = e.currentTarget.getAttribute('data-id');
             const memberName = m.name;
-            if (confirm(`確定要刪除成員「${memberName}」嗎？這不會刪除歷史紀錄。`)) {
+            if (confirm(`確定要刪除成員「${memberName}」嗎？`)) {
                 removeMember(id);
                 renderAll();
             }
@@ -200,10 +163,6 @@ export function renderSchedule() {
             `;
         }
 
-        const statusBadgeHtml = s.status === 'completed' 
-            ? `<span class="badge badge-completed"><i class="fa-solid fa-check"></i> 已完成</span>`
-            : `<span class="badge badge-pending"><i class="fa-regular fa-clock"></i> 待打掃</span>`;
-
         item.innerHTML = `
             <div class="schedule-info">
                 <div class="schedule-week">
@@ -218,7 +177,6 @@ export function renderSchedule() {
                 </div>
             </div>
             <div class="schedule-actions">
-                ${statusBadgeHtml}
                 <button class="btn btn-secondary btn-edit-week" data-week="${s.weekKey}" style="padding: 0.4rem 0.8rem; font-size: 0.8rem;">
                     <i class="fa-regular fa-pen-to-square"></i> 修改
                 </button>
@@ -230,42 +188,6 @@ export function renderSchedule() {
         });
 
         elements.scheduleContainer.appendChild(item);
-    });
-}
-
-// 渲染歷史紀錄
-export function renderHistory() {
-    const history = getHistory();
-    elements.historyContainer.innerHTML = '';
-
-    if (history.length === 0) {
-        elements.historyContainer.innerHTML = `<div style="text-align: center; color: var(--text-muted); padding: 1.5rem;">尚無歷史完成紀錄</div>`;
-        return;
-    }
-
-    history.forEach(log => {
-        const cleanerNames = log.cleaners.map(c => c.name).join(', ');
-        const dateObj = new Date(log.completedAt);
-        const formattedTime = `${dateObj.getFullYear()}/${String(dateObj.getMonth() + 1).padStart(2, '0')}/${String(dateObj.getDate()).padStart(2, '0')} ${String(dateObj.getHours()).padStart(2, '0')}:${String(dateObj.getMinutes()).padStart(2, '0')}`;
-
-        const item = document.createElement('div');
-        item.className = 'history-item';
-        item.innerHTML = `
-            <div class="history-meta-info">
-                <div class="history-week">${log.weekKey}</div>
-                <div class="history-date">${log.dateRange}</div>
-            </div>
-            <div style="text-align: right;">
-                <div class="history-cleaner-info">
-                    <i class="fa-solid fa-broom" style="color: var(--accent)"></i>
-                    <span>${cleanerNames}</span>
-                </div>
-                <div class="history-completed-time">
-                    <i class="fa-regular fa-circle-check"></i> ${formattedTime} 完成
-                </div>
-            </div>
-        `;
-        elements.historyContainer.appendChild(item);
     });
 }
 
@@ -423,5 +345,4 @@ export function renderAll() {
     renderHero();
     renderMembers();
     renderSchedule();
-    renderHistory();
 }
