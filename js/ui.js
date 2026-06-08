@@ -315,7 +315,7 @@ export function closeEditModal() {
 }
 
 // 快速自動排班演算法
-// 依據歷史打掃次數最少，且不是上一週打掃的人，優先排班
+// 依成員清單順序進行嚴格的單人輪替排班 (N 個人就是 N 週輪完一次)
 export function runQuickSchedule() {
     const members = getMembers();
     if (members.length === 0) {
@@ -324,63 +324,63 @@ export function runQuickSchedule() {
     }
 
     const schedule = getSchedule();
-    const counts = getCleaningCounts();
+    const history = getHistory();
     const today = new Date();
     
-    // 生成接下來 4 週的排班
+    // 1. 取得需要排班的週數清單 (本週與接下來的 3 週，共 4 週)
+    const targetWeeks = [];
     for (let i = 0; i < 4; i++) {
         const targetDate = new Date(today);
         targetDate.setDate(today.getDate() + (i * 7));
-        const weekKey = getYearWeekString(targetDate);
-        
-        // 若該週已有排班且已指派人員，則跳過，不重複覆蓋已確定的排班
-        const existing = schedule.find(s => s.weekKey === weekKey);
-        if (existing && existing.cleanerIds.length > 0) {
-            continue;
-        }
-
-        // 決定該週的值日生：
-        // 1. 先計算此時所有成員的預計打掃次數 (累計歷史 + 這次已排班但未完成的次數)
-        const currentAssignedCounts = { ...counts };
-        schedule.forEach(s => {
-            if (s.weekKey !== weekKey) { // 排除當前計算的這一週
-                s.cleanerIds.forEach(cid => {
-                    currentAssignedCounts[cid] = (currentAssignedCounts[cid] || 0) + 0.8; // 給予未完成排班較小權重
-                });
-            }
-        });
-
-        // 2. 取得上一週排的值日生 ID (避免連續兩週打掃)
-        let prevWeekCleaners = [];
-        const prevDate = new Date(targetDate);
-        prevDate.setDate(targetDate.getDate() - 7);
-        const prevWeekKey = getYearWeekString(prevDate);
-        const prevWeekDuty = schedule.find(s => s.weekKey === prevWeekKey);
-        if (prevWeekDuty) {
-            prevWeekCleaners = prevWeekDuty.cleanerIds;
-        }
-
-        // 3. 排序成員
-        const sortedMembers = [...members].sort((a, b) => {
-            const countA = currentAssignedCounts[a.id] || 0;
-            const countB = currentAssignedCounts[b.id] || 0;
-            
-            // 優先排次數少的
-            if (countA !== countB) return countA - countB;
-            
-            // 其次避免排上一週剛打掃完的人
-            const wasAPrev = prevWeekCleaners.includes(a.id) ? 1 : 0;
-            const wasBPrev = prevWeekCleaners.includes(b.id) ? 1 : 0;
-            return wasAPrev - wasBPrev;
-        });
-
-        // 選擇第一位作為該週值日生
-        const selectedCleanerId = sortedMembers[0].id;
-        updateWeekCleaner(weekKey, [selectedCleanerId]);
+        targetWeeks.push(getYearWeekString(targetDate));
     }
 
+    // 2. 尋找「最後一次打掃」的成員索引，做為輪替的起始點
+    let lastIdx = -1;
+
+    // 先從歷史紀錄找最近一次打掃的人
+    if (history.length > 0) {
+        const lastHistory = history[0]; // 歷史紀錄最上面是最新的一筆
+        if (lastHistory.cleaners && lastHistory.cleaners.length > 0) {
+            const lastCleanerId = lastHistory.cleaners[0].id;
+            lastIdx = members.findIndex(m => m.id === lastCleanerId);
+        }
+    }
+
+    // 如果歷史沒有，則看看排班表中，在我們即將排班的最早一週之前，有沒有已排定的人
+    if (lastIdx === -1 && schedule.length > 0) {
+        // 找出所有已排班且有指派人員的週，並依週數排序
+        const scheduledWeeks = schedule
+            .filter(s => s.cleanerIds && s.cleanerIds.length > 0 && !targetWeeks.includes(s.weekKey))
+            .sort((a, b) => b.weekKey.localeCompare(a.weekKey)); // 最新的在前
+        
+        if (scheduledWeeks.length > 0) {
+            const lastScheduledCleanerId = scheduledWeeks[0].cleanerIds[0];
+            lastIdx = members.findIndex(m => m.id === lastScheduledCleanerId);
+        }
+    }
+
+    // 3. 開始為目標四週進行嚴格輪替排班
+    targetWeeks.forEach(weekKey => {
+        const existing = schedule.find(s => s.weekKey === weekKey);
+        
+        if (existing && existing.cleanerIds && existing.cleanerIds.length > 0) {
+            // 如果這週已經有排定的人，我們不覆蓋它，但更新輪替指針以順延下一週的人
+            const currentCleanerId = existing.cleanerIds[0];
+            const currentIdx = members.findIndex(m => m.id === currentCleanerId);
+            if (currentIdx !== -1) {
+                lastIdx = currentIdx;
+            }
+        } else {
+            // 計算下一位值日生的索引
+            lastIdx = (lastIdx + 1) % members.length;
+            const nextCleaner = members[lastIdx];
+            updateWeekCleaner(weekKey, [nextCleaner.id]);
+        }
+    });
+
     renderAll();
-    alert('已成功為您自動生成未來四週的排班表！');
+    alert('已成功為您依成員順序，自動輪替生成未來四週的排班表！');
 }
 
 // 註冊所有 UI 事件監聽器
