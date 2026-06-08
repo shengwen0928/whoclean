@@ -50,9 +50,12 @@
                                 <span id="hero-date-range"><i class="fa-solid fa-clock"></i> --/-- ~ --/--</span>
                             </div>
                         </div>
-                        <div class="hero-action">
+                        <div class="hero-action" style="display: flex; gap: 0.75rem; flex-direction: column;">
                             <button class="btn btn-primary" id="btn-edit-current">
                                 <i class="fa-solid fa-user-pen"></i> 修改人員
+                            </button>
+                            <button class="btn btn-secondary" id="btn-send-teams" style="background: rgba(98, 100, 167, 0.15); color: #8f92d1; border-color: rgba(98, 100, 167, 0.3);">
+                                <i class="fa-brands fa-microsoft-teams"></i> Teams 通知
                             </button>
                         </div>
                     </div>
@@ -117,20 +120,31 @@
         </div>
     </div>
 
-    <!-- Modal for Microsoft Login Settings -->
+    <!-- Modal for Microsoft Login & Teams Settings -->
     <div class="modal-overlay" id="ms-settings-modal">
         <div class="modal-content">
             <div class="modal-header">
-                <h3 class="modal-title">Microsoft 整合設定</h3>
+                <h3 class="modal-title">系統與整合設定</h3>
                 <button class="modal-close" id="btn-close-ms-modal">&times;</button>
             </div>
             <div class="modal-body">
-                <div style="margin-bottom: 1.25rem;">
-                    <label style="font-weight: 600; display: block; margin-bottom: 0.5rem;">Microsoft Application (client) ID:</label>
-                    <input type="text" class="form-control" id="ms-client-id-input" placeholder="請貼上 Azure 註冊的 Client ID...">
+                <!-- Teams Webhook -->
+                <div style="margin-bottom: 1.5rem;">
+                    <label style="font-weight: 600; display: block; margin-bottom: 0.5rem; color: #8f92d1;">
+                        <i class="fa-brands fa-microsoft-teams"></i> Microsoft Teams Webhook URL:
+                    </label>
+                    <input type="text" class="form-control" id="teams-webhook-input" placeholder="貼上 Teams 頻道的 Webhook URL...">
                     <p style="color: var(--text-muted); font-size: 0.75rem; margin-top: 0.5rem; line-height: 1.4;">
-                        ℹ️ 取得方式：請至 Azure Portal 註冊一個單頁應用程式 (SPA)，將「重新導向 URI」設定為此網址，並複製其「應用程式 (用戶端) 識別碼」。
+                        ℹ️ 取得方式：在 Teams 頻道的「工作流程 (Workflows)」或「連接器 (Connectors)」中新增「收到 Webhook 要求時張貼」，並複製產生的 URL。
                     </p>
+                </div>
+
+                <!-- Microsoft Client ID -->
+                <div style="border-top: 1px solid var(--border-color); padding-top: 1.25rem; margin-bottom: 1.25rem;">
+                    <label style="font-weight: 600; display: block; margin-bottom: 0.5rem; color: #0078d4;">
+                        <i class="fa-brands fa-microsoft"></i> Microsoft Client ID (登入用):
+                    </label>
+                    <input type="text" class="form-control" id="ms-client-id-input" placeholder="請貼上 Azure 註冊的 Client ID...">
                 </div>
                 
                 <div style="border-top: 1px solid var(--border-color); padding-top: 1.25rem; text-align: center;">

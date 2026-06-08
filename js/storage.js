@@ -6,6 +6,7 @@ import { getYearWeekString, getWeekRangeText, getRandomGradient, generateId, get
 const STORAGE_KEYS = {
     MEMBERS: 'whoclean_members',
     ROTATION_ANCHOR: 'whoclean_rotation_anchor',
+    TEAMS_WEBHOOK: 'whoclean_teams_webhook',
 };
 
 export function initStorage() {
@@ -15,6 +16,17 @@ export function initStorage() {
     if (!localStorage.getItem(STORAGE_KEYS.ROTATION_ANCHOR)) {
         localStorage.setItem(STORAGE_KEYS.ROTATION_ANCHOR, JSON.stringify(null));
     }
+    if (!localStorage.getItem(STORAGE_KEYS.TEAMS_WEBHOOK)) {
+        localStorage.setItem(STORAGE_KEYS.TEAMS_WEBHOOK, '');
+    }
+}
+
+export function getTeamsWebhookUrl() {
+    return localStorage.getItem(STORAGE_KEYS.TEAMS_WEBHOOK) || '';
+}
+
+export function saveTeamsWebhookUrl(url) {
+    localStorage.setItem(STORAGE_KEYS.TEAMS_WEBHOOK, url.trim());
 }
 
 export function getMembers() {

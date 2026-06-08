@@ -1,4 +1,4 @@
-import { getMembers, getSchedule, addMember, removeMember, updateWeekCleaner, moveMemberUp, moveMemberDown } from './storage.js';
+import { getMembers, getSchedule, addMember, removeMember, updateWeekCleaner, moveMemberUp, moveMemberDown, getTeamsWebhookUrl, saveTeamsWebhookUrl } from './storage.js';
 import { getYearWeekString, getWeekRangeText } from './utils.js';
 import { getMicrosoftClientId, saveMicrosoftClientId, getCurrentUser, login, logout, saveDemoUser } from './auth.js';
 
@@ -31,10 +31,12 @@ const elements = {
     btnMsSettings: document.getElementById('btn-ms-settings'),
     msSettingsModal: document.getElementById('ms-settings-modal'),
     msClientIdInput: document.getElementById('ms-client-id-input'),
+    teamsWebhookInput: document.getElementById('teams-webhook-input'),
     btnCloseMsModal: document.getElementById('btn-close-ms-modal'),
     btnCancelMsModal: document.getElementById('btn-cancel-ms-modal'),
     btnSaveMsSettings: document.getElementById('btn-save-ms-settings'),
     btnMsDemoLogin: document.getElementById('btn-ms-demo-login'),
+    btnSendTeams: document.getElementById('btn-send-teams'),
 };
 
 let activeEditingWeekKey = null;
@@ -89,6 +91,7 @@ export async function renderAuthStatus() {
 
 export function openMsSettingsModal() {
     elements.msClientIdInput.value = getMicrosoftClientId();
+    elements.teamsWebhookInput.value = getTeamsWebhookUrl();
     elements.msSettingsModal.classList.add('active');
 }
 
@@ -359,12 +362,14 @@ export function setupEventListeners() {
     // 儲存 Microsoft 設定
     elements.btnSaveMsSettings.addEventListener('click', () => {
         const clientId = elements.msClientIdInput.value;
+        const webhookUrl = elements.teamsWebhookInput.value;
+        
         saveMicrosoftClientId(clientId);
+        saveTeamsWebhookUrl(webhookUrl);
+        
         closeMsSettingsModal();
         renderAll();
-        if (clientId) {
-            alert('已成功儲存 Microsoft Client ID！');
-        }
+        alert('設定儲存成功！');
     });
 
     // 模擬 Microsoft 登入
@@ -379,6 +384,54 @@ export function setupEventListeners() {
         renderAll();
         alert('成功！已使用模擬 Microsoft 帳戶登入。');
     });
+
+    // 發送 Teams 通知
+    elements.btnSendTeams.addEventListener('click', sendTeamsNotification);
+}
+
+// 發送 Teams 提醒通知
+export async function sendTeamsNotification() {
+    const webhookUrl = getTeamsWebhookUrl();
+    if (!webhookUrl) {
+        alert('請先在設定中設定 Microsoft Teams Webhook URL！');
+        openMsSettingsModal();
+        return;
+    }
+
+    const today = new Date();
+    const currentWeekKey = getYearWeekString(today);
+    const schedule = getSchedule();
+    const members = getMembers();
+    
+    const currentDuty = schedule.find(s => s.weekKey === currentWeekKey);
+    if (!currentDuty || currentDuty.cleanerIds.length === 0) {
+        alert('本週尚未排定值日生，無法發送通知！');
+        return;
+    }
+
+    const cleanerNames = currentDuty.cleanerIds
+        .map(cid => members.find(m => m.id === cid)?.name)
+        .filter(Boolean)
+        .join(', ');
+
+    const dateRange = currentDuty.dateRange;
+
+    try {
+        await fetch(webhookUrl, {
+            method: 'POST',
+            mode: 'no-cors', // 繞過瀏覽器的跨來源限制 (不需讀取回傳值)
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                text: `🧹 **WhoClean 本週值日生提醒**\n\n本週值日生是：**${cleanerNames}**\n值日區間：**${dateRange}**\n\n請值日生記得撥空打掃，大家一起維護環境整潔喔！`
+            })
+        });
+        alert('已發送通知要求至 Teams！請至您的 Teams 頻道確認。');
+    } catch (err) {
+        console.error(err);
+        alert('發送失敗，請確認 Webhook URL 是否正確！');
+    }
 }
 
 // 刷新全部 UI 面板
