@@ -7,6 +7,7 @@ const STORAGE_KEYS = {
     MEMBERS: 'whoclean_members',
     ROTATION_ANCHOR: 'whoclean_rotation_anchor',
     TEAMS_WEBHOOK: 'whoclean_teams_webhook',
+    PERSONAL_TEAMS_WEBHOOK: 'whoclean_personal_teams_webhook',
 };
 
 export function initStorage() {
@@ -19,6 +20,9 @@ export function initStorage() {
     if (!localStorage.getItem(STORAGE_KEYS.TEAMS_WEBHOOK)) {
         localStorage.setItem(STORAGE_KEYS.TEAMS_WEBHOOK, '');
     }
+    if (!localStorage.getItem(STORAGE_KEYS.PERSONAL_TEAMS_WEBHOOK)) {
+        localStorage.setItem(STORAGE_KEYS.PERSONAL_TEAMS_WEBHOOK, '');
+    }
 }
 
 export function getTeamsWebhookUrl() {
@@ -27,6 +31,14 @@ export function getTeamsWebhookUrl() {
 
 export function saveTeamsWebhookUrl(url) {
     localStorage.setItem(STORAGE_KEYS.TEAMS_WEBHOOK, url.trim());
+}
+
+export function getPersonalTeamsWebhookUrl() {
+    return localStorage.getItem(STORAGE_KEYS.PERSONAL_TEAMS_WEBHOOK) || '';
+}
+
+export function savePersonalTeamsWebhookUrl(url) {
+    localStorage.setItem(STORAGE_KEYS.PERSONAL_TEAMS_WEBHOOK, url.trim());
 }
 
 export function getMembers() {

@@ -1,4 +1,4 @@
-import { getMembers, getSchedule, addMember, removeMember, updateWeekCleaner, moveMemberUp, moveMemberDown, getTeamsWebhookUrl, saveTeamsWebhookUrl } from './storage.js';
+import { getMembers, getSchedule, addMember, removeMember, updateWeekCleaner, moveMemberUp, moveMemberDown, getTeamsWebhookUrl, saveTeamsWebhookUrl, getPersonalTeamsWebhookUrl, savePersonalTeamsWebhookUrl } from './storage.js';
 import { getYearWeekString, getWeekRangeText, downloadIcsFile } from './utils.js';
 import { getMicrosoftClientId, saveMicrosoftClientId, getCurrentUser, login, logout, saveDemoUser } from './auth.js';
 
@@ -33,6 +33,7 @@ const elements = {
     msSettingsModal: document.getElementById('ms-settings-modal'),
     msClientIdInput: document.getElementById('ms-client-id-input'),
     teamsWebhookInput: document.getElementById('teams-webhook-input'),
+    personalTeamsWebhookInput: document.getElementById('personal-teams-webhook-input'),
     btnCloseMsModal: document.getElementById('btn-close-ms-modal'),
     btnCancelMsModal: document.getElementById('btn-cancel-ms-modal'),
     btnSaveMsSettings: document.getElementById('btn-save-ms-settings'),
@@ -92,6 +93,7 @@ export async function renderAuthStatus() {
 export function openMsSettingsModal() {
     elements.msClientIdInput.value = getMicrosoftClientId();
     elements.teamsWebhookInput.value = getTeamsWebhookUrl();
+    elements.personalTeamsWebhookInput.value = getPersonalTeamsWebhookUrl();
     elements.msSettingsModal.classList.add('active');
 }
 
@@ -158,6 +160,16 @@ export function renderHero() {
         </button>
     `;
 
+    // 如果使用者設定了個人專屬 Webhook，就多渲染一個「提醒我自己」的按鈕
+    const personalWebhook = getPersonalTeamsWebhookUrl();
+    if (personalWebhook) {
+        buttonsHtml += `
+            <button class="btn btn-secondary" id="btn-send-personal-teams" style="background: rgba(16, 185, 129, 0.15); color: #34d399; border-color: rgba(16, 185, 129, 0.3);">
+                <i class="fa-brands fa-microsoft-teams"></i> 提醒我自己
+            </button>
+        `;
+    }
+
     // 檢查本週值日生是否有設定 Email
     const emails = activeCleaners.map(ac => ac.email).filter(Boolean);
     if (emails.length > 0) {
@@ -179,6 +191,9 @@ export function renderHero() {
         const cleanerNames = activeCleaners.map(ac => ac.name).join(', ');
         downloadIcsFile(currentWeekKey, cleanerNames);
     };
+    if (personalWebhook) {
+        document.getElementById('btn-send-personal-teams').onclick = sendPersonalTeamsNotification;
+    }
 }
 
 // 渲染成員列表
@@ -425,9 +440,11 @@ export function setupEventListeners() {
     elements.btnSaveMsSettings.addEventListener('click', () => {
         const clientId = elements.msClientIdInput.value;
         const webhookUrl = elements.teamsWebhookInput.value;
+        const personalWebhookUrl = elements.personalTeamsWebhookInput.value;
         
         saveMicrosoftClientId(clientId);
         saveTeamsWebhookUrl(webhookUrl);
+        savePersonalTeamsWebhookUrl(personalWebhookUrl);
         
         closeMsSettingsModal();
         renderAll();
@@ -490,6 +507,51 @@ export async function sendTeamsNotification() {
     } catch (err) {
         console.error(err);
         alert('發送失敗，請確認 Webhook URL 是否正確！');
+    }
+}
+
+// 發送個人 Teams 提醒通知
+export async function sendPersonalTeamsNotification() {
+    const webhookUrl = getPersonalTeamsWebhookUrl();
+    if (!webhookUrl) {
+        alert('請先在設定中設定您的個人 Teams Webhook URL！');
+        openMsSettingsModal();
+        return;
+    }
+
+    const today = new Date();
+    const currentWeekKey = getYearWeekString(today);
+    const schedule = getSchedule();
+    const members = getMembers();
+    
+    const currentDuty = schedule.find(s => s.weekKey === currentWeekKey);
+    if (!currentDuty || currentDuty.cleanerIds.length === 0) {
+        alert('本週尚未排定值日生，無法發送通知！');
+        return;
+    }
+
+    const cleanerNames = currentDuty.cleanerIds
+        .map(cid => members.find(m => m.id === cid)?.name)
+        .filter(Boolean)
+        .join(', ');
+
+    const dateRange = currentDuty.dateRange;
+
+    try {
+        await fetch(webhookUrl, {
+            method: 'POST',
+            mode: 'no-cors',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                text: `🔔 **WhoClean 值日生個人通知**\n\n本週值日生是：**${cleanerNames}**\n打掃區間：**${dateRange}**\n\n這是您自己設定的個人通知，提醒您注意打掃輪值！`
+            })
+        });
+        alert('已發送個人提醒通知至您的 Teams！請前往您的個人 Teams 確認。');
+    } catch (err) {
+        console.error(err);
+        alert('發送失敗，請確認個人 Webhook URL 是否正確！');
     }
 }
 

@@ -125,13 +125,20 @@
             </div>
             <div class="modal-body">
                 <!-- Teams Webhook -->
-                <div style="margin-bottom: 1.5rem;">
+                <div style="margin-bottom: 1.25rem;">
                     <label style="font-weight: 600; display: block; margin-bottom: 0.5rem; color: #8f92d1;">
-                        <i class="fa-brands fa-microsoft-teams"></i> Microsoft Teams Webhook URL:
+                        <i class="fa-brands fa-microsoft-teams"></i> Teams 公用頻道 Webhook URL:
                     </label>
-                    <input type="text" class="form-control" id="teams-webhook-input" placeholder="貼上 Teams 頻道的 Webhook URL...">
+                    <input type="text" class="form-control" id="teams-webhook-input" placeholder="貼上公用頻道的 Webhook URL...">
+                </div>
+
+                <div style="margin-bottom: 1.5rem;">
+                    <label style="font-weight: 600; display: block; margin-bottom: 0.5rem; color: #10b981;">
+                        <i class="fa-brands fa-microsoft-teams"></i> 我個人的 Teams Webhook URL (提醒自己):
+                    </label>
+                    <input type="text" class="form-control" id="personal-teams-webhook-input" placeholder="貼上只提醒您個人的 Webhook URL...">
                     <p style="color: var(--text-muted); font-size: 0.75rem; margin-top: 0.5rem; line-height: 1.4;">
-                        ℹ️ 取得方式：在 Teams 頻道的「工作流程 (Workflows)」或「連接器 (Connectors)」中新增「收到 Webhook 要求時張貼」，並複製產生的 URL。
+                        ℹ️ 取得方式：在 Teams 的「工作流程」中，建立一個個人聊天通知的 Webhook，複製 URL 貼至此處，即可點擊「提醒我自己」發送通知給自己。
                     </p>
                 </div>
 
