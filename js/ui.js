@@ -492,6 +492,49 @@ export async function sendTeamsNotification() {
 
     const dateRange = currentDuty.dateRange;
 
+    const adaptiveCard = {
+        type: "AdaptiveCard",
+        version: "1.4",
+        body: [
+            {
+                type: "Container",
+                style: "accent",
+                bleed: true,
+                items: [
+                    {
+                        type: "TextBlock",
+                        text: "🧹 WhoClean 本週值日生提醒",
+                        weight: "Bolder",
+                        size: "Large",
+                        color: "Accent"
+                    }
+                ]
+            },
+            {
+                type: "FactSet",
+                spacing: "Medium",
+                facts: [
+                    {
+                        title: "本週值日生:",
+                        value: cleanerNames
+                    },
+                    {
+                        title: "值日區間:",
+                        value: dateRange
+                    }
+                ]
+            },
+            {
+                type: "TextBlock",
+                text: "請值日生記得撥空打掃，大家一起維護環境整潔喔！",
+                wrap: true,
+                isSubtle: true,
+                spacing: "Medium"
+            }
+        ],
+        $schema: "http://adaptivecards.io/schemas/adaptive-card.json"
+    };
+
     try {
         await fetch(webhookUrl, {
             method: 'POST',
@@ -499,10 +542,7 @@ export async function sendTeamsNotification() {
             headers: {
                 'Content-Type': 'application/json'
             },
-            body: JSON.stringify({
-                title: '🧹 WhoClean 本週值日生提醒',
-                text: `本週值日生是：**${cleanerNames}**\n\n值日區間：**${dateRange}**\n\n請值日生記得撥空打掃，大家一起維護環境整潔喔！`
-            })
+            body: JSON.stringify(adaptiveCard)
         });
         alert('已發送通知要求至 Teams！請至您的 Teams 頻道確認。');
     } catch (err) {
@@ -538,6 +578,49 @@ export async function sendPersonalTeamsNotification() {
 
     const dateRange = currentDuty.dateRange;
 
+    const adaptiveCard = {
+        type: "AdaptiveCard",
+        version: "1.4",
+        body: [
+            {
+                type: "Container",
+                style: "good",
+                bleed: true,
+                items: [
+                    {
+                        type: "TextBlock",
+                        text: "🔔 WhoClean 值日生個人通知",
+                        weight: "Bolder",
+                        size: "Large",
+                        color: "Good"
+                    }
+                ]
+            },
+            {
+                type: "FactSet",
+                spacing: "Medium",
+                facts: [
+                    {
+                        title: "本週值日生:",
+                        value: cleanerNames
+                    },
+                    {
+                        title: "打掃區間:",
+                        value: dateRange
+                    }
+                ]
+            },
+            {
+                type: "TextBlock",
+                text: "這是您自己設定的個人通知，提醒您注意打掃輪值！",
+                wrap: true,
+                isSubtle: true,
+                spacing: "Medium"
+            }
+        ],
+        $schema: "http://adaptivecards.io/schemas/adaptive-card.json"
+    };
+
     try {
         await fetch(webhookUrl, {
             method: 'POST',
@@ -545,10 +628,7 @@ export async function sendPersonalTeamsNotification() {
             headers: {
                 'Content-Type': 'application/json'
             },
-            body: JSON.stringify({
-                title: '🔔 WhoClean 值日生個人通知',
-                text: `本週值日生是：**${cleanerNames}**\n\n打掃區間：**${dateRange}**\n\n這是您自己設定的個人通知，提醒您注意打掃輪值！`
-            })
+            body: JSON.stringify(adaptiveCard)
         });
         alert('已發送個人提醒通知至您的 Teams！請前往您的個人 Teams 確認。');
     } catch (err) {
