@@ -8,7 +8,7 @@ const elements = {
     heroCleaners: document.getElementById('hero-cleaners-container'),
     heroWeek: document.getElementById('hero-week-str'),
     heroDate: document.getElementById('hero-date-range'),
-    btnEditCurrent: document.getElementById('btn-edit-current'),
+    heroActionContainer: document.getElementById('hero-action-container'),
     
     scheduleContainer: document.getElementById('schedule-container'),
     
@@ -16,6 +16,7 @@ const elements = {
     memberCountBadge: document.getElementById('member-count-badge'),
     addMemberForm: document.getElementById('add-member-form'),
     newMemberName: document.getElementById('new-member-name'),
+    newMemberEmail: document.getElementById('new-member-email'),
     
     // 彈出視窗 (排班編輯)
     editModal: document.getElementById('edit-schedule-modal'),
@@ -36,7 +37,6 @@ const elements = {
     btnCancelMsModal: document.getElementById('btn-cancel-ms-modal'),
     btnSaveMsSettings: document.getElementById('btn-save-ms-settings'),
     btnMsDemoLogin: document.getElementById('btn-ms-demo-login'),
-    btnSendTeams: document.getElementById('btn-send-teams'),
 };
 
 let activeEditingWeekKey = null;
@@ -115,13 +115,14 @@ export function renderHero() {
         elements.heroCleaners.innerHTML = `<span class="hero-cleaner-name" style="color: var(--text-muted)">本週尚未安排值日生</span>`;
         elements.heroWeek.innerHTML = `<i class="fa-regular fa-calendar"></i> ${currentWeekKey}`;
         elements.heroDate.innerHTML = `<i class="fa-solid fa-clock"></i> ${getWeekRangeText(currentWeekKey)}`;
-        elements.btnEditCurrent.innerText = '安排值日生';
-        elements.btnEditCurrent.onclick = () => openEditModal(currentWeekKey);
+        elements.heroActionContainer.innerHTML = `
+            <button class="btn btn-primary" id="btn-edit-current" style="width: 100%;">
+                <i class="fa-solid fa-user-pen"></i> 安排值日生
+            </button>
+        `;
+        document.getElementById('btn-edit-current').onclick = () => openEditModal(currentWeekKey);
         return;
     }
-
-    elements.btnEditCurrent.innerHTML = `<i class="fa-solid fa-user-pen"></i> 修改人員`;
-    elements.btnEditCurrent.onclick = () => openEditModal(currentWeekKey);
 
     // 取得所有本週值日生資料
     const activeCleaners = currentDuty.cleanerIds.map(cid => members.find(m => m.id === cid)).filter(Boolean);
@@ -143,6 +144,34 @@ export function renderHero() {
 
     elements.heroWeek.innerHTML = `<i class="fa-regular fa-calendar"></i> ${currentDuty.weekKey}`;
     elements.heroDate.innerHTML = `<i class="fa-solid fa-clock"></i> ${currentDuty.dateRange}`;
+
+    // 動態產生操作按鈕
+    let buttonsHtml = `
+        <button class="btn btn-primary" id="btn-edit-current">
+            <i class="fa-solid fa-user-pen"></i> 修改人員
+        </button>
+        <button class="btn btn-secondary" id="btn-send-teams" style="background: rgba(98, 100, 167, 0.15); color: #8f92d1; border-color: rgba(98, 100, 167, 0.3);">
+            <i class="fa-brands fa-microsoft-teams"></i> 頻道通知
+        </button>
+    `;
+
+    // 檢查本週值日生是否有設定 Email
+    const emails = activeCleaners.map(ac => ac.email).filter(Boolean);
+    if (emails.length > 0) {
+        const msgText = `🧹 哈囉，溫馨提醒：這週（${currentDuty.dateRange}）輪到您值日打掃囉！記得抽空清潔環境，十分感謝您！`;
+        const teamsDeepLink = `https://teams.microsoft.com/l/chat/0/0?users=${emails.join(',')}&message=${encodeURIComponent(msgText)}`;
+        buttonsHtml += `
+            <a class="btn btn-secondary" href="${teamsDeepLink}" target="_blank" style="background: rgba(0, 120, 212, 0.15); color: #5ca1e6; border-color: rgba(0, 120, 212, 0.3); text-decoration: none; text-align: center; display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem;">
+                <i class="fa-regular fa-comment-dots"></i> Teams 私訊提醒
+            </a>
+        `;
+    }
+
+    elements.heroActionContainer.innerHTML = buttonsHtml;
+
+    // 綁定動態生成的按鈕事件
+    document.getElementById('btn-edit-current').onclick = () => openEditModal(currentWeekKey);
+    document.getElementById('btn-send-teams').onclick = sendTeamsNotification;
 }
 
 // 渲染成員列表
@@ -160,15 +189,31 @@ export function renderMembers() {
     members.forEach((m, idx) => {
         const item = document.createElement('div');
         item.className = 'member-item';
+        
+        let emailHtml = '';
+        let directMessageBtn = '';
+        if (m.email) {
+            emailHtml = `<div style="font-size: 0.75rem; color: var(--text-muted); max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${m.email}</div>`;
+            const msgText = `🧹 哈囉，溫馨提醒您本週值日輪值已排定，感謝您的配合！`;
+            const teamsDeepLink = `https://teams.microsoft.com/l/chat/0/0?users=${m.email}&message=${encodeURIComponent(msgText)}`;
+            directMessageBtn = `
+                <a class="btn-icon" href="${teamsDeepLink}" target="_blank" title="發送 Teams 私訊" style="color: #5ca1e6; border-color: rgba(0, 120, 212, 0.2); background: rgba(0, 120, 212, 0.05); text-decoration: none; display: inline-flex; align-items: center; justify-content: center;">
+                    <i class="fa-regular fa-comment-dots"></i>
+                </a>
+            `;
+        }
+
         item.innerHTML = `
             <div class="member-profile">
                 <div class="avatar" style="background: ${m.color}">${getAvatarText(m.name)}</div>
-                <div>
+                <div style="text-align: left;">
                     <div class="member-name">${m.name}</div>
-                    <div class="member-count">輪值順序：第 ${idx + 1} 順位</div>
+                    <div class="member-count">第 ${idx + 1} 順位</div>
+                    ${emailHtml}
                 </div>
             </div>
-            <div style="display: flex; gap: 0.5rem; align-items: center;">
+            <div style="display: flex; gap: 0.35rem; align-items: center;">
+                ${directMessageBtn}
                 <button class="btn-icon move-up-btn" data-id="${m.id}" title="上移順序" ${idx === 0 ? 'disabled style="opacity: 0.3; cursor: not-allowed;"' : ''}>
                     <i class="fa-solid fa-chevron-up"></i>
                 </button>
@@ -326,9 +371,11 @@ export function setupEventListeners() {
     elements.addMemberForm.addEventListener('submit', (e) => {
         e.preventDefault();
         const name = elements.newMemberName.value.trim();
+        const email = elements.newMemberEmail ? elements.newMemberEmail.value.trim() : '';
         if (name) {
-            addMember(name);
+            addMember(name, email);
             elements.newMemberName.value = '';
+            if (elements.newMemberEmail) elements.newMemberEmail.value = '';
             renderAll();
         }
     });
@@ -384,9 +431,6 @@ export function setupEventListeners() {
         renderAll();
         alert('成功！已使用模擬 Microsoft 帳戶登入。');
     });
-
-    // 發送 Teams 通知
-    elements.btnSendTeams.addEventListener('click', sendTeamsNotification);
 }
 
 // 發送 Teams 提醒通知

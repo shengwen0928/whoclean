@@ -50,13 +50,8 @@
                                 <span id="hero-date-range"><i class="fa-solid fa-clock"></i> --/-- ~ --/--</span>
                             </div>
                         </div>
-                        <div class="hero-action" style="display: flex; gap: 0.75rem; flex-direction: column;">
-                            <button class="btn btn-primary" id="btn-edit-current">
-                                <i class="fa-solid fa-user-pen"></i> 修改人員
-                            </button>
-                            <button class="btn btn-secondary" id="btn-send-teams" style="background: rgba(98, 100, 167, 0.15); color: #8f92d1; border-color: rgba(98, 100, 167, 0.3);">
-                                <i class="fa-brands fa-microsoft-teams"></i> Teams 通知
-                            </button>
+                        <div class="hero-action" id="hero-action-container" style="display: flex; gap: 0.75rem; flex-direction: column;">
+                            <!-- Rendered dynamically -->
                         </div>
                     </div>
                 </div>
@@ -86,10 +81,11 @@
                     <div class="member-list" id="members-container">
                         <!-- Dynamic content -->
                     </div>
-                    <form class="add-member-form" id="add-member-form">
-                        <input type="text" class="form-control" id="new-member-name" placeholder="輸入新成員姓名..." required max="10">
-                        <button type="submit" class="btn btn-primary" style="padding: 0 1.25rem;">
-                            <i class="fa-solid fa-user-plus"></i>
+                    <form class="add-member-form" id="add-member-form" style="display: flex; flex-direction: column; gap: 0.75rem; margin-top: 1.25rem;">
+                        <input type="text" class="form-control" id="new-member-name" placeholder="輸入成員姓名..." required max="10">
+                        <input type="email" class="form-control" id="new-member-email" placeholder="輸入 Teams Email (選填)...">
+                        <button type="submit" class="btn btn-primary" style="width: 100%;">
+                            <i class="fa-solid fa-user-plus"></i> 新增成員
                         </button>
                     </form>
                 </div>

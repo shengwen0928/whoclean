@@ -37,11 +37,12 @@ export function saveMembers(members) {
     localStorage.setItem(STORAGE_KEYS.MEMBERS, JSON.stringify(members));
 }
 
-export function addMember(name) {
+export function addMember(name, email = '') {
     const members = getMembers();
     const newMember = {
         id: generateId(),
         name,
+        email: email.trim(),
         color: getRandomGradient(),
         active: true
     };
