@@ -1,0 +1,150 @@
+/**
+ * Microsoft 驗證管理模組 (MSAL.js Integration)
+ */
+
+const STORAGE_KEYS = {
+    CLIENT_ID: 'whoclean_ms_client_id',
+    DEMO_USER: 'whoclean_demo_user',
+};
+
+// 取得儲存的 Client ID
+export function getMicrosoftClientId() {
+    return localStorage.getItem(STORAGE_KEYS.CLIENT_ID) || '';
+}
+
+// 儲存 Client ID
+export function saveMicrosoftClientId(clientId) {
+    localStorage.setItem(STORAGE_KEYS.CLIENT_ID, clientId.trim());
+}
+
+// 取得模擬登入的使用者資訊
+export function getDemoUser() {
+    const userStr = localStorage.getItem(STORAGE_KEYS.DEMO_USER);
+    return userStr ? JSON.parse(userStr) : null;
+}
+
+// 儲存模擬登入的使用者資訊
+export function saveDemoUser(user) {
+    if (user) {
+        localStorage.setItem(STORAGE_KEYS.DEMO_USER, JSON.stringify(user));
+    } else {
+        localStorage.removeItem(STORAGE_KEYS.DEMO_USER);
+    }
+}
+
+// 初始化 MSAL 實例
+let msalInstance = null;
+async function getMsalInstance() {
+    const clientId = getMicrosoftClientId();
+    if (!clientId) return null;
+
+    if (msalInstance) return msalInstance;
+
+    const msalConfig = {
+        auth: {
+            clientId: clientId,
+            authority: "https://login.microsoftonline.com/common",
+            redirectUri: window.location.origin,
+        },
+        cache: {
+            cacheLocation: "localStorage",
+            storeAuthStateInCookie: false,
+        }
+    };
+
+    // MSAL 會在全域載入 (由 CDN 引入)
+    if (typeof msal !== 'undefined') {
+        msalInstance = new msal.PublicClientApplication(msalConfig);
+        await msalInstance.initialize();
+        return msalInstance;
+    }
+    return null;
+}
+
+// 取得目前登入的使用者
+export async function getCurrentUser() {
+    // 優先檢查真實 MSAL 登入
+    const instance = await getMsalInstance();
+    if (instance) {
+        const accounts = instance.getAllAccounts();
+        if (accounts.length > 0) {
+            return {
+                name: accounts[0].name || accounts[0].username,
+                email: accounts[0].username,
+                avatar: accounts[0].name ? accounts[0].name.substring(0, 2) : 'MS',
+                isDemo: false
+            };
+        }
+    }
+
+    // 其次檢查模擬登入
+    const demoUser = getDemoUser();
+    if (demoUser) {
+        return {
+            ...demoUser,
+            isDemo: true
+        };
+    }
+
+    return null;
+}
+
+// 執行登入
+export async function login() {
+    const clientId = getMicrosoftClientId();
+    
+    // 如果沒有設定 Client ID，則回傳 false，讓 UI 提示模擬登入
+    if (!clientId) {
+        return { success: false, needConfig: true };
+    }
+
+    try {
+        const instance = await getMsalInstance();
+        if (!instance) throw new Error("MSAL 未載入");
+
+        const loginRequest = {
+            scopes: ["User.Read"]
+        };
+        const loginResponse = await instance.loginPopup(loginRequest);
+        return {
+            success: true,
+            user: {
+                name: loginResponse.account.name || loginResponse.account.username,
+                email: loginResponse.account.username,
+                avatar: loginResponse.account.name ? loginResponse.account.name.substring(0, 2) : 'MS',
+                isDemo: false
+            }
+        };
+    } catch (error) {
+        console.error("Microsoft 登入失敗:", error);
+        return { success: false, error: error.message };
+    }
+}
+
+// 執行登出
+export async function logout() {
+    const demoUser = getDemoUser();
+    if (demoUser) {
+        saveDemoUser(null);
+        return true;
+    }
+
+    const instance = await getMsalInstance();
+    if (instance) {
+        const accounts = instance.getAllAccounts();
+        if (accounts.length > 0) {
+            try {
+                await instance.logoutPopup({
+                    postLogoutRedirectUri: window.location.origin
+                });
+                return true;
+            } catch (error) {
+                console.error("Microsoft 登出失敗:", error);
+                // 強制清空快取以防卡死
+                localStorage.clear();
+                window.location.reload();
+            }
+        }
+    }
+    return true;
+}

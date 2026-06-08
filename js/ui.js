@@ -1,5 +1,6 @@
 import { getMembers, getSchedule, addMember, removeMember, updateWeekCleaner, moveMemberUp, moveMemberDown } from './storage.js';
 import { getYearWeekString, getWeekRangeText } from './utils.js';
+import { getMicrosoftClientId, saveMicrosoftClientId, getCurrentUser, login, logout, saveDemoUser } from './auth.js';
 
 // DOM 元素快取
 const elements = {
@@ -16,7 +17,7 @@ const elements = {
     addMemberForm: document.getElementById('add-member-form'),
     newMemberName: document.getElementById('new-member-name'),
     
-    // 彈出視窗
+    // 彈出視窗 (排班編輯)
     editModal: document.getElementById('edit-schedule-modal'),
     modalTitle: document.getElementById('modal-title-text'),
     modalWeekRange: document.getElementById('modal-week-range'),
@@ -24,6 +25,16 @@ const elements = {
     btnCloseModal: document.getElementById('btn-close-modal'),
     btnCancelModal: document.getElementById('btn-cancel-modal'),
     btnSaveModal: document.getElementById('btn-save-modal'),
+
+    // Microsoft 登入與設定相關
+    authStatusContainer: document.getElementById('auth-status-container'),
+    btnMsSettings: document.getElementById('btn-ms-settings'),
+    msSettingsModal: document.getElementById('ms-settings-modal'),
+    msClientIdInput: document.getElementById('ms-client-id-input'),
+    btnCloseMsModal: document.getElementById('btn-close-ms-modal'),
+    btnCancelMsModal: document.getElementById('btn-cancel-ms-modal'),
+    btnSaveMsSettings: document.getElementById('btn-save-ms-settings'),
+    btnMsDemoLogin: document.getElementById('btn-ms-demo-login'),
 };
 
 let activeEditingWeekKey = null;
@@ -31,6 +42,58 @@ let activeEditingWeekKey = null;
 // 取得頭像縮寫文字
 function getAvatarText(name) {
     return name ? name.substring(0, 2) : '?';
+}
+
+// 渲染 Microsoft 登入狀態
+export async function renderAuthStatus() {
+    const user = await getCurrentUser();
+    const container = elements.authStatusContainer;
+    
+    if (user) {
+        container.innerHTML = `
+            <div style="display: flex; align-items: center; gap: 0.75rem; background: rgba(255, 255, 255, 0.05); border: 1px solid var(--border-color); padding: 0.35rem 0.85rem; border-radius: var(--radius-md);">
+                <div class="avatar" style="background: linear-gradient(135deg, #0072ff 0%, #00c6ff 100%); width: 28px; height: 28px; font-size: 0.75rem;">${user.avatar}</div>
+                <div style="text-align: left; max-width: 120px;">
+                    <div style="font-size: 0.85rem; font-weight: 600; line-height: 1.2; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${user.name}</div>
+                    <div style="font-size: 0.7rem; color: var(--text-secondary); line-height: 1.2; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                        ${user.email} ${user.isDemo ? '<span style="color: var(--warning); font-size: 0.65rem;">(模擬)</span>' : ''}
+                    </div>
+                </div>
+                <button class="btn-icon danger" id="btn-ms-logout" title="登出" style="width: 24px; height: 24px; border: none; background: transparent; color: var(--text-secondary); display: flex; align-items: center; justify-content: center; cursor: pointer;">
+                    <i class="fa-solid fa-right-from-bracket" style="font-size: 0.8rem;"></i>
+                </button>
+            </div>
+        `;
+        
+        document.getElementById('btn-ms-logout').addEventListener('click', async () => {
+            await logout();
+            renderAll();
+        });
+    } else {
+        container.innerHTML = `
+            <button class="btn btn-primary" id="btn-ms-login" style="padding: 0.5rem 1rem; font-size: 0.85rem; background: linear-gradient(135deg, #0078d4 0%, #005a9e 100%);">
+                <i class="fa-brands fa-microsoft"></i> Microsoft 登入
+            </button>
+        `;
+        
+        document.getElementById('btn-ms-login').addEventListener('click', async () => {
+            const res = await login();
+            if (res.needConfig) {
+                openMsSettingsModal();
+            } else if (res.success) {
+                renderAll();
+            }
+        });
+    }
+}
+
+export function openMsSettingsModal() {
+    elements.msClientIdInput.value = getMicrosoftClientId();
+    elements.msSettingsModal.classList.add('active');
+}
+
+export function closeMsSettingsModal() {
+    elements.msSettingsModal.classList.remove('active');
 }
 
 // 渲染本週主卡片
@@ -284,10 +347,43 @@ export function setupEventListeners() {
         closeEditModal();
         renderAll();
     });
+
+    // Microsoft 設定 Modal 事件開關
+    elements.btnMsSettings.addEventListener('click', openMsSettingsModal);
+    elements.btnCloseMsModal.addEventListener('click', closeMsSettingsModal);
+    elements.btnCancelMsModal.addEventListener('click', closeMsSettingsModal);
+    elements.msSettingsModal.addEventListener('click', (e) => {
+        if (e.target === elements.msSettingsModal) closeMsSettingsModal();
+    });
+
+    // 儲存 Microsoft 設定
+    elements.btnSaveMsSettings.addEventListener('click', () => {
+        const clientId = elements.msClientIdInput.value;
+        saveMicrosoftClientId(clientId);
+        closeMsSettingsModal();
+        renderAll();
+        if (clientId) {
+            alert('已成功儲存 Microsoft Client ID！');
+        }
+    });
+
+    // 模擬 Microsoft 登入
+    elements.btnMsDemoLogin.addEventListener('click', () => {
+        const mockUser = {
+            name: '微軟測試用戶',
+            email: 'test_user@outlook.com',
+            avatar: '微軟'
+        };
+        saveDemoUser(mockUser);
+        closeMsSettingsModal();
+        renderAll();
+        alert('成功！已使用模擬 Microsoft 帳戶登入。');
+    });
 }
 
 // 刷新全部 UI 面板
 export function renderAll() {
+    renderAuthStatus();
     renderHero();
     renderMembers();
     renderSchedule();
