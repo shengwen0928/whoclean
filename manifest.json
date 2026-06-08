@@ -1,0 +1,48 @@
+{
+  "$schema": "https://developer.microsoft.com/en-us/json-schemas/teams/v1.16/MicrosoftTeams.schema.json",
+  "manifestVersion": "1.16",
+  "version": "1.0.0",
+  "id": "7c8b21f3-4c92-4f11-9a72-68b2bf31ea11",
+  "packageName": "com.whoclean.app",
+  "developer": {
+    "name": "WhoClean",
+    "websiteUrl": "http://localhost:8080",
+    "privacyUrl": "http://localhost:8080",
+    "termsOfUseUrl": "http://localhost:8080"
+  },
+  "name": {
+    "short": "WhoClean",
+    "full": "WhoClean - 本周值日生打掃紀錄工具"
+  },
+  "description": {
+    "short": "輕鬆追蹤與記錄本周是誰打掃，支援 Teams 自動無感登入與通知提醒。",
+    "full": "WhoClean 是一個極簡、現代且美觀的團隊值日生打掃排班管理工具。整合 Microsoft Teams，讓成員在 Teams 內開啟時自動辨識身分，並可一鍵發送提醒至指定頻道或私訊通知。"
+  },
+  "icons": {
+    "outline": "outline.png",
+    "color": "color.png"
+  },
+  "accentColor": "#6264A7",
+  "configurableTabs": [],
+  "staticTabs": [
+    {
+      "entityId": "whocleanTab",
+      "name": "WhoClean 打掃紀錄",
+      "contentUrl": "http://localhost:8080/index.html",
+      "websiteUrl": "http://localhost:8080/index.html",
+      "scopes": [
+        "personal",
+        "team"
+      ]
+    }
+  ],
+  "permissions": [
+    "identity",
+    "messageTeamMembers"
+  ],
+  "validDomains": [
+    "localhost",
+    "*.ngrok-free.app",
+    "*.locall.host"
+  ]
+}

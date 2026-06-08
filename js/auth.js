@@ -61,9 +61,52 @@ async function getMsalInstance() {
     return null;
 }
 
+let teamsUser = null;
+
+// 初始化 Teams SDK 並嘗試自動取得使用者身分 (無感登入)
+export function initTeamsSdk() {
+    return new Promise((resolve) => {
+        if (typeof microsoftTeams !== 'undefined') {
+            try {
+                microsoftTeams.app.initialize().then(() => {
+                    microsoftTeams.app.getContext().then((context) => {
+                        if (context && context.user) {
+                            teamsUser = {
+                                name: context.user.displayName || context.user.userPrincipalName.split('@')[0],
+                                email: context.user.userPrincipalName,
+                                avatar: context.user.displayName ? context.user.displayName.substring(0, 2) : 'TM',
+                                isTeams: true
+                            };
+                            resolve(teamsUser);
+                        } else {
+                            resolve(null);
+                        }
+                    }).catch(err => {
+                        console.warn("取得 Teams Context 失敗 (可能不在 Teams 內執行):", err);
+                        resolve(null);
+                    });
+                }).catch(err => {
+                    console.warn("初始化 Teams SDK 失敗 (可能不在 Teams 內執行):", err);
+                    resolve(null);
+                });
+            } catch (e) {
+                console.warn("偵測到 Teams 物件但初始化失敗:", e);
+                resolve(null);
+            }
+        } else {
+            resolve(null);
+        }
+    });
+}
+
 // 取得目前登入的使用者
 export async function getCurrentUser() {
-    // 優先檢查真實 MSAL 登入
+    // 1. 優先檢查 Teams 帳戶 (若在 Teams 內執行會自動抓到)
+    if (teamsUser) {
+        return teamsUser;
+    }
+
+    // 2. 其次檢查真實 MSAL 登入
     const instance = await getMsalInstance();
     if (instance) {
         const accounts = instance.getAllAccounts();
@@ -77,7 +120,7 @@ export async function getCurrentUser() {
         }
     }
 
-    // 其次檢查模擬登入
+    // 3. 再其次檢查模擬登入
     const demoUser = getDemoUser();
     if (demoUser) {
         return {

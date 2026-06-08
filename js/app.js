@@ -3,15 +3,19 @@
  */
 import { initStorage } from './storage.js';
 import { renderAll, setupEventListeners } from './ui.js';
+import { initTeamsSdk } from './auth.js';
 
-function init() {
+async function init() {
     // 1. 初始化資料庫
     initStorage();
     
-    // 2. 綁定按鈕與表單事件
+    // 2. 嘗試初始化 Teams SDK 並自動取得身分 (無感登入)
+    await initTeamsSdk();
+    
+    // 3. 綁定按鈕與表單事件
     setupEventListeners();
     
-    // 3. 渲染主頁面 UI
+    // 4. 渲染主頁面 UI
     renderAll();
 }
 
