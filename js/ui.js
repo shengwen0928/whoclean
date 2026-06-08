@@ -292,8 +292,8 @@ export function renderSchedule() {
         return;
     }
 
-    // 依週排序（未來在前）
-    const sortedSchedule = [...schedule].sort((a, b) => b.weekKey.localeCompare(a.weekKey));
+    // 依週數正序排列 (最早的時間在最上面，本週在最上方)
+    const sortedSchedule = [...schedule].sort((a, b) => a.weekKey.localeCompare(b.weekKey));
 
     sortedSchedule.forEach(s => {
         const isCurrent = s.weekKey === currentWeekKey;

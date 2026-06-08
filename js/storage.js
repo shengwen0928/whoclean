@@ -123,9 +123,9 @@ export function getSchedule() {
 
     const anchorIdx = members.findIndex(m => m.id === anchor.memberId);
     
-    // 動態產生前 2 週到後 5 週，共 8 週的自動排班
+    // 動態產生從本週開始，長度等於成員人數的週數排班 (過去的時間不顯示，只顯示與人數相同的週數)
     const schedule = [];
-    for (let i = -2; i <= 5; i++) {
+    for (let i = 0; i < members.length; i++) {
         const targetDate = new Date(today);
         targetDate.setDate(today.getDate() + (i * 7));
         const weekKey = getYearWeekString(targetDate);
