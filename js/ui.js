@@ -495,12 +495,13 @@ export async function sendTeamsNotification() {
     try {
         await fetch(webhookUrl, {
             method: 'POST',
-            mode: 'no-cors', // 繞過瀏覽器的跨來源限制 (不需讀取回傳值)
+            mode: 'cors',
             headers: {
                 'Content-Type': 'application/json'
             },
             body: JSON.stringify({
-                text: `🧹 **WhoClean 本週值日生提醒**\n\n本週值日生是：**${cleanerNames}**\n值日區間：**${dateRange}**\n\n請值日生記得撥空打掃，大家一起維護環境整潔喔！`
+                title: '🧹 WhoClean 本週值日生提醒',
+                text: `本週值日生是：**${cleanerNames}**\n\n值日區間：**${dateRange}**\n\n請值日生記得撥空打掃，大家一起維護環境整潔喔！`
             })
         });
         alert('已發送通知要求至 Teams！請至您的 Teams 頻道確認。');
@@ -540,12 +541,13 @@ export async function sendPersonalTeamsNotification() {
     try {
         await fetch(webhookUrl, {
             method: 'POST',
-            mode: 'no-cors',
+            mode: 'cors',
             headers: {
                 'Content-Type': 'application/json'
             },
             body: JSON.stringify({
-                text: `🔔 **WhoClean 值日生個人通知**\n\n本週值日生是：**${cleanerNames}**\n打掃區間：**${dateRange}**\n\n這是您自己設定的個人通知，提醒您注意打掃輪值！`
+                title: '🔔 WhoClean 值日生個人通知',
+                text: `本週值日生是：**${cleanerNames}**\n\n打掃區間：**${dateRange}**\n\n這是您自己設定的個人通知，提醒您注意打掃輪值！`
             })
         });
         alert('已發送個人提醒通知至您的 Teams！請前往您的個人 Teams 確認。');
