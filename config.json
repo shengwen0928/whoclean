@@ -1,0 +1,12 @@
+{
+  "webhookUrl": "",
+  "members": [
+    "張三",
+    "李四",
+    "王五"
+  ],
+  "anchor": {
+    "weekKey": "2026-W24",
+    "memberName": "張三"
+  }
+}

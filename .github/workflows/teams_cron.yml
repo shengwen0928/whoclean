@@ -1,0 +1,24 @@
+name: Weekly WhoClean Reminder
+
+on:
+  schedule:
+    # 台灣時間每週一早上 08:00 (相當於 UTC 時間每週一凌晨 00:00)
+    - cron: '0 0 * * 1'
+  workflow_dispatch: # 允許手動在 GitHub 頁面上點擊執行測試
+
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Run scheduler
+        env:
+          TEAMS_WEBHOOK_URL: ${{ secrets.TEAMS_WEBHOOK_URL }}
+        run: node cron_scheduler.js
