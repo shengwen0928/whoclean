@@ -4,26 +4,48 @@
 
 ---
 
-## 🛠️ 第一步：建立本地 HTTPS 通道 (ngrok)
+## 🛠️ 第一步：選擇 HTTPS 部署方式 (ngrok 或 GitHub Pages)
 
-Microsoft Teams 規定所有的 Tab 網頁必須為安全的 HTTPS 網址。在開發階段，您需要將本地的伺服器映射至公網 HTTPS 網址。
+Microsoft Teams 規定所有的 Tab 網頁必須為安全的 **HTTPS** 網址。您可以使用以下兩種方式之一來部署：
 
-### 1. 安裝與執行 ngrok
-若您已安裝 **ngrok**，請在終端機執行：
-```bash
-# 若您執行 start.bat 使用的是 Node.js (8080 埠)
-ngrok http 8080
+### 方案 1：使用 GitHub Pages (推薦，免費且免本機開機)
+這是最方便的線上部署方案，GitHub 會自動提供免費的 HTTPS 網址。
 
-# 若您執行 start.bat 使用的是 Python (8000 埠)
-ngrok http 8000
-```
-
-### 2. 取得公網 HTTPS 網址
-啟動後，ngrok 會給您一個類似以下的轉發網址：
-`https://xxxx-xxxx-xxxx.ngrok-free.app`
+1. **建立 GitHub 儲存庫 (Repository)**：
+   - 在您的 GitHub 上建立一個新的儲存庫，例如命名為 `whoclean`。
+2. **將本機程式碼推送到 GitHub**：
+   在專案目錄下執行終端機指令（請將 `<your-username>` 替換為您的 GitHub 帳號）：
+   ```bash
+   git remote add origin https://github.com/<your-username>/whoclean.git
+   git branch -M main
+   git push -u origin main
+   ```
+3. **啟用 GitHub Pages**：
+   - 進入該 GitHub 專案的 **Settings** -> **Pages**。
+   - 在 **Build and deployment** 下的 **Source** 選擇 `Deploy from a branch`。
+   - **Branch** 選擇 `main`，資料夾選擇 `/ (root)`，然後按下 **Save**。
+4. **取得 HTTPS 網址**：
+   - 稍等約 1~2 分鐘重新整理頁面，GitHub 會在上方顯示您的網站網址，格式為：
+     `https://<your-username>.github.io/whoclean/`
 
 > [!IMPORTANT]
-> 請複製這個 `https://....ngrok-free.app` 網址，我們在下一步將會用到它。
+> 請複製您的 GitHub Pages 網址（結尾需帶有 `/`），這將是您 Teams App 的正式網址。
+
+---
+
+### 方案 2：使用本地穿透 (ngrok，適合本地快速除錯)
+如果您不想推送到 GitHub，只想在本機測試：
+
+1. **安裝與執行 ngrok**：
+   ```bash
+   # 若您執行 start.bat 使用的是 Node.js (8080 埠)
+   ngrok http 8080
+
+   # 若您執行 start.bat 使用的是 Python (8000 埠)
+   ngrok http 8000
+   ```
+2. **取得轉發網址**：
+   複製啟動後顯示的 `https://xxxx.ngrok-free.app` 網址。
 
 ---
 
