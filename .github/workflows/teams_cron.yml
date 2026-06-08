@@ -2,9 +2,12 @@ name: Weekly WhoClean Reminder
 
 on:
   schedule:
-    # 台灣時間每週一早上 08:00 (相當於 UTC 時間每週一凌晨 00:00)
-    - cron: '0 0 * * 1'
+    # 台灣時間每週一早上 02:00 (格林威治標準時間 UTC 每週日傍晚 18:00)
+    - cron: '0 18 * * 0'
   workflow_dispatch: # 允許手動在 GitHub 頁面上點擊執行測試
+
+permissions:
+  contents: write
 
 jobs:
   notify:
@@ -22,3 +25,10 @@ jobs:
         env:
           TEAMS_WEBHOOK_URL: ${{ secrets.TEAMS_WEBHOOK_URL }}
         run: node cron_scheduler.js
+
+      - name: Commit and push current_duty.json
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add current_duty.json
+          git diff-index --quiet HEAD || (git commit -m "chore: 自動更新值日生資料 current_duty.json" && git push)

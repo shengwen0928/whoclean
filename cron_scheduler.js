@@ -102,6 +102,15 @@ async function run() {
     console.log(`錨點週數: ${anchor.weekKey}, 錨點成員: ${anchor.memberName}`);
     console.log(`週數差: ${diff}, 本週值日生: ${cleanerName}`);
 
+    // 額外輸出一個靜態檔案，供 Power Automate 精準定時抓取
+    const dutyInfo = {
+        cleanerName,
+        dateRange,
+        weekKey: currentWeekKey
+    };
+    fs.writeFileSync(path.join(__dirname, 'current_duty.json'), JSON.stringify(dutyInfo, null, 2));
+    console.log("已更新並寫入 current_duty.json");
+
     const adaptiveCard = {
         type: "AdaptiveCard",
         version: "1.4",
