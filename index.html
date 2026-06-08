@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WhoClean - 本周值日生打掃紀錄工具</title>
+    <meta name="description" content="WhoClean 是一個極簡、現代且美觀的團隊/家庭本周值日生打掃紀錄與排班管理工具。">
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Core & Components Stylesheet -->
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/components.css">
+</head>
+<body>
+    <div class="container">
+        <!-- Header Section -->
+        <header>
+            <div class="logo-section">
+                <h1>WhoClean <i>🧹</i></h1>
+                <p>輕鬆追蹤與記錄本周是誰打掃，維護環境整潔！</p>
+            </div>
+            <div class="header-actions">
+                <button class="btn btn-primary" id="btn-quick-schedule">
+                    <i class="fa-solid fa-calendar-days"></i> 快速排班
+                </button>
+            </div>
+        </header>
+
+        <!-- Main Dashboard Layout -->
+        <div class="dashboard-grid">
+            <!-- Left Column: Hero & Schedule -->
+            <div class="left-column">
+                <!-- Current Week Hero Card -->
+                <div class="hero-card" id="current-week-hero">
+                    <div class="hero-body">
+                        <div class="avatar lg" id="hero-avatar" style="background: linear-gradient(135deg, #8a2be2 0%, #00f2fe 100%);">
+                            ?
+                        </div>
+                        <div class="hero-info">
+                            <div class="hero-label">本週值日生 (CURRENT DUTY)</div>
+                            <div class="hero-cleaners" id="hero-cleaners-container">
+                                <span class="hero-cleaner-name">載入中...</span>
+                            </div>
+                            <div class="hero-meta">
+                                <span id="hero-week-str"><i class="fa-regular fa-calendar"></i> ----W--</span>
+                                <span id="hero-date-range"><i class="fa-solid fa-clock"></i> --/-- ~ --/--</span>
+                                <span id="hero-status-badge"></span>
+                            </div>
+                        </div>
+                        <div class="hero-action">
+                            <button class="btn btn-primary" id="btn-complete-duty">
+                                <i class="fa-solid fa-circle-check"></i> 完成打掃
+                            </button>
+                            <button class="btn btn-secondary" id="btn-edit-current">
+                                <i class="fa-solid fa-user-pen"></i> 修改人員
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Schedule Management Panel -->
+                <div class="panel">
+                    <div class="panel-title">
+                        <span>排班表 (Schedule)</span>
+                        <span style="font-size: 0.85rem; font-weight: normal; color: var(--text-secondary);">
+                            點擊修改編輯該週人員
+                        </span>
+                    </div>
+                    <div class="schedule-list" id="schedule-container">
+                        <!-- Dynamic content -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Column: Members & History -->
+            <div class="right-column">
+                <!-- Member Management Panel -->
+                <div class="panel">
+                    <div class="panel-title">
+                        <span>成員管理 (Members)</span>
+                        <span class="badge badge-pending" id="member-count-badge">0 人</span>
+                    </div>
+                    <div class="member-list" id="members-container">
+                        <!-- Dynamic content -->
+                    </div>
+                    <form class="add-member-form" id="add-member-form">
+                        <input type="text" class="form-control" id="new-member-name" placeholder="輸入新成員姓名..." required max="10">
+                        <button type="submit" class="btn btn-primary" style="padding: 0 1.25rem;">
+                            <i class="fa-solid fa-user-plus"></i>
+                        </button>
+                    </form>
+                </div>
+
+                <!-- History Logs Panel -->
+                <div class="panel">
+                    <div class="panel-title">
+                        <span>歷史打掃紀錄 (History Logs)</span>
+                    </div>
+                    <div class="history-list" id="history-container">
+                        <!-- Dynamic content -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal for Editing Schedule/Cleaners -->
+    <div class="modal-overlay" id="edit-schedule-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title" id="modal-title-text">修改值日生</h3>
+                <button class="modal-close" id="btn-close-modal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p style="color: var(--text-secondary); font-size: 0.9rem; margin-bottom: 1rem;" id="modal-week-range">
+                    週數: 2026-W24 (06/08 ~ 06/14)
+                </p>
+                <div style="font-weight: 600; margin-bottom: 0.5rem;">選擇打掃人員 (可多選)：</div>
+                <div class="member-checkbox-list" id="modal-member-checkboxes">
+                    <!-- Dynamic check list -->
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" id="btn-cancel-modal">取消</button>
+                <button class="btn btn-primary" id="btn-save-modal">儲存變更</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Application Script entry point -->
+    <script type="module" src="js/app.js"></script>
+</body>
+</html>
