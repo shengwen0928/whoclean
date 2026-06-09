@@ -14,6 +14,8 @@
     <!-- Core & Components Stylesheet -->
     <link rel="stylesheet" href="css/style.css">
     <link rel="stylesheet" href="css/components.css">
+    <!-- Prevent favicon 404 -->
+    <link rel="icon" href="data:,">
 </head>
 <body>
     <div class="container">
@@ -185,7 +187,7 @@
                         </div>
                         <div>
                             <label style="font-size: 0.85rem; color: var(--text-secondary); text-align: left; display: block;">電子信箱:</label>
-                            <input type="email" class="form-control" id="auth-email" placeholder="example@mail.com" required>
+                            <input type="email" class="form-control" id="auth-email" placeholder="example@mail.com" autocomplete="username" required>
                         </div>
                         <div>
                             <label style="font-size: 0.85rem; color: var(--text-secondary); text-align: left; display: block;">密碼:</label>
