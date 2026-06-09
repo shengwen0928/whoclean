@@ -275,6 +275,8 @@
 }
 
 .form-control {
+    width: 100%;
+    box-sizing: border-box;
     flex-grow: 1;
     background: rgba(255, 255, 255, 0.05);
     border: 1px solid var(--border-color);
