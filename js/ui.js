@@ -245,6 +245,8 @@ export function renderMembers() {
     members.forEach((m, idx) => {
         const item = document.createElement('div');
         item.className = 'member-item';
+        item.setAttribute('draggable', 'true');
+        item.setAttribute('data-id', m.id);
         
         let emailHtml = '';
         let directMessageBtn = '';
@@ -253,7 +255,7 @@ export function renderMembers() {
             const msgText = `🧹 哈囉，溫馨提醒您本週值日輪值已排定，感謝您的配合！`;
             const teamsDeepLink = `https://teams.microsoft.com/l/chat/0/0?users=${m.email}&message=${encodeURIComponent(msgText)}`;
             directMessageBtn = `
-                <a class="btn-icon" href="${teamsDeepLink}" target="_blank" title="發送 Teams 私訊" style="color: #5ca1e6; border-color: rgba(0, 120, 212, 0.2); background: rgba(0, 120, 212, 0.05); text-decoration: none; display: inline-flex; align-items: center; justify-content: center;">
+                <a class="btn-icon" href="${teamsDeepLink}" target="_blank" title="發送 Teams 私訊" style="color: #5ca1e6; border-color: rgba(0, 120, 212, 0.2); background: rgba(0, 120, 212, 0.05); text-decoration: none; display: inline-flex; align-items: center; justify-content: center; cursor: grab;">
                     <i class="fa-regular fa-comment-dots"></i>
                 </a>
             `;
@@ -268,38 +270,77 @@ export function renderMembers() {
                     ${emailHtml}
                 </div>
             </div>
-            <div style="display: flex; gap: 0.35rem; align-items: center;">
+            <div style="display: flex; gap: 0.35rem; align-items: center;" class="member-actions-wrapper">
                 ${directMessageBtn}
-                <button class="btn-icon move-up-btn" data-id="${m.id}" title="上移順序" ${idx === 0 ? 'disabled style="opacity: 0.3; cursor: not-allowed;"' : ''}>
-                    <i class="fa-solid fa-chevron-up"></i>
-                </button>
-                <button class="btn-icon move-down-btn" data-id="${m.id}" title="下移順序" ${idx === members.length - 1 ? 'disabled style="opacity: 0.3; cursor: not-allowed;"' : ''}>
-                    <i class="fa-solid fa-chevron-down"></i>
-                </button>
-                <button class="btn-icon danger delete-member-btn" data-id="${m.id}" title="刪除成員">
+                <button class="btn-icon danger delete-member-btn" data-id="${m.id}" title="刪除成員" style="cursor: pointer;">
                     <i class="fa-regular fa-trash-can"></i>
                 </button>
             </div>
         `;
         
-        // 綁定上移/下移/刪除事件
-        const upBtn = item.querySelector('.move-up-btn');
-        const downBtn = item.querySelector('.move-down-btn');
-        
-        if (upBtn) {
-            upBtn.addEventListener('click', () => {
-                moveMemberUp(m.id);
-                renderAll();
-            });
-        }
-        if (downBtn) {
-            downBtn.addEventListener('click', () => {
-                moveMemberDown(m.id);
-                renderAll();
-            });
-        }
-        
+        // --- 拖曳事件綁定 ---
+        item.addEventListener('dragstart', (e) => {
+            item.classList.add('dragging');
+            e.dataTransfer.setData('text/plain', m.id);
+            // 設定拖曳時的視覺回饋效果
+            e.dataTransfer.effectAllowed = 'move';
+        });
+
+        item.addEventListener('dragend', () => {
+            item.classList.remove('dragging');
+            document.querySelectorAll('.member-item').forEach(el => el.classList.remove('drag-over'));
+        });
+
+        item.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            e.dataTransfer.dropEffect = 'move';
+        });
+
+        item.addEventListener('dragenter', (e) => {
+            e.preventDefault();
+            if (!item.classList.contains('dragging')) {
+                item.classList.add('drag-over');
+            }
+        });
+
+        item.addEventListener('dragleave', () => {
+            item.classList.remove('drag-over');
+        });
+
+        item.addEventListener('drop', (e) => {
+            e.preventDefault();
+            item.classList.remove('drag-over');
+            
+            const draggedId = e.dataTransfer.getData('text/plain');
+            const targetId = m.id;
+            
+            if (draggedId && draggedId !== targetId) {
+                const draggedIdx = members.findIndex(mem => mem.id === draggedId);
+                const targetIdx = members.findIndex(mem => mem.id === targetId);
+                
+                if (draggedIdx !== -1 && targetIdx !== -1) {
+                    const reordered = [...members];
+                    const [removed] = reordered.splice(draggedIdx, 1);
+                    reordered.splice(targetIdx, 0, removed);
+                    
+                    saveMembers(reordered);
+                    renderAll();
+                }
+            }
+        });
+
+        // 避免內部的按鈕與連結影響拖曳抓取滑鼠行為
+        const actionsWrapper = item.querySelector('.member-actions-wrapper');
+        actionsWrapper.addEventListener('mouseenter', () => {
+            item.setAttribute('draggable', 'false');
+        });
+        actionsWrapper.addEventListener('mouseleave', () => {
+            item.setAttribute('draggable', 'true');
+        });
+
+        // 刪除事件
         item.querySelector('.delete-member-btn').addEventListener('click', (e) => {
+            e.stopPropagation(); // 阻止氣泡事件，避免觸發拖曳相關操作
             const id = e.currentTarget.getAttribute('data-id');
             const memberName = m.name;
             if (confirm(`確定要刪除成員「${memberName}」嗎？`)) {
