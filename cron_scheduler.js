@@ -62,6 +62,35 @@ function getWeekDiff(weekStr1, weekStr2) {
     return Math.round(diffTime / (7 * 24 * 60 * 60 * 1000));
 }
 
+// 解析 Firestore REST API 回傳的強型別 JSON
+function parseFirestoreValue(value) {
+    if (value.stringValue !== undefined) return value.stringValue;
+    if (value.integerValue !== undefined) return parseInt(value.integerValue, 10);
+    if (value.doubleValue !== undefined) return parseFloat(value.doubleValue);
+    if (value.booleanValue !== undefined) return value.booleanValue;
+    if (value.arrayValue !== undefined) {
+        return (value.arrayValue.values || []).map(v => parseFirestoreValue(v));
+    }
+    if (value.mapValue !== undefined) {
+        const obj = {};
+        const fields = value.mapValue.fields || {};
+        for (const k in fields) {
+            obj[k] = parseFirestoreValue(fields[k]);
+        }
+        return obj;
+    }
+    return null;
+}
+
+function parseFirestoreDoc(doc) {
+    const data = {};
+    const fields = doc.fields || {};
+    for (const k in fields) {
+        data[k] = parseFirestoreValue(fields[k]);
+    }
+    return data;
+}
+
 async function run() {
     const configPath = path.join(__dirname, 'config.json');
     if (!fs.existsSync(configPath)) {
@@ -70,9 +99,43 @@ async function run() {
     }
 
     const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
-    const members = config.members || [];
-    const anchor = config.anchor;
-    const webhookUrl = process.env.TEAMS_WEBHOOK_URL || config.webhookUrl;
+    let members = config.members || [];
+    let anchor = config.anchor;
+    let webhookUrl = process.env.TEAMS_WEBHOOK_URL || config.webhookUrl;
+
+    // 嘗試從 Firebase 雲端讀取最新資料
+    if (config.firebaseConfig && config.firebaseConfig.projectId) {
+        console.log("偵測到 Firebase 設定，嘗試從雲端 Firestore 讀取最新資料...");
+        const projectId = config.firebaseConfig.projectId;
+        const firestoreUrl = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/whoclean/settings`;
+        try {
+            const firestoreRes = await fetch(firestoreUrl);
+            if (firestoreRes.ok) {
+                const docData = await firestoreRes.json();
+                const cloudData = parseFirestoreDoc(docData);
+                if (cloudData.members && cloudData.anchor) {
+                    const cloudMembers = cloudData.members;
+                    const cloudAnchor = cloudData.anchor;
+                    const anchorMember = cloudMembers.find(m => m.id === cloudAnchor.memberId);
+                    if (anchorMember) {
+                        members = cloudMembers.map(m => m.name);
+                        anchor = {
+                            weekKey: cloudAnchor.weekKey,
+                            memberName: anchorMember.name
+                        };
+                        if (cloudData.teamsWebhook) {
+                            webhookUrl = cloudData.teamsWebhook;
+                        }
+                        console.log("成功從 Firebase 同步最新成員與錨點設定！");
+                    }
+                }
+            } else {
+                console.log(`無法讀取雲端資料 (HTTP ${firestoreRes.status})，降級使用本地 config.json`);
+            }
+        } catch (e) {
+            console.error("讀取 Firebase 失敗，降級使用本地 config.json:", e);
+        }
+    }
 
     if (!webhookUrl) {
         console.error("未設定 TEAMS_WEBHOOK_URL 環境變數，且 config.json 中的 webhookUrl 為空！");
