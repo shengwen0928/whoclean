@@ -1,6 +1,6 @@
 import { getMembers, getSchedule, addMember, removeMember, updateWeekCleaner, moveMemberUp, moveMemberDown, getTeamsWebhookUrl, saveTeamsWebhookUrl, getPersonalTeamsWebhookUrl, savePersonalTeamsWebhookUrl } from './storage.js';
 import { getYearWeekString, getWeekRangeText, downloadIcsFile } from './utils.js';
-import { getMicrosoftClientId, saveMicrosoftClientId, getCurrentUser, login, logout, saveDemoUser } from './auth.js';
+import { getMicrosoftClientId, saveMicrosoftClientId, getCurrentUser, login, logout, saveDemoUser, registerWithEmail, loginWithEmail, loginWithGoogle, sendPhoneVerificationCode, confirmPhoneVerificationCode } from './auth.js';
 
 // DOM 元素快取
 const elements = {
@@ -38,6 +38,30 @@ const elements = {
     btnCancelMsModal: document.getElementById('btn-cancel-ms-modal'),
     btnSaveMsSettings: document.getElementById('btn-save-ms-settings'),
     btnMsDemoLogin: document.getElementById('btn-ms-demo-login'),
+    
+    // Firebase Auth Modal Elements
+    authModal: document.getElementById('firebase-login-modal'),
+    authModalTitle: document.getElementById('auth-modal-title'),
+    btnCloseAuthModal: document.getElementById('btn-close-auth-modal'),
+    btnCancelAuthModal: document.getElementById('btn-cancel-auth-modal'),
+    tabEmailLogin: document.getElementById('tab-email-login'),
+    tabPhoneLogin: document.getElementById('tab-phone-login'),
+    emailSection: document.getElementById('auth-email-section'),
+    phoneSection: document.getElementById('auth-phone-section'),
+    emailForm: document.getElementById('email-auth-form'),
+    regNameField: document.getElementById('reg-name-field'),
+    authDisplayName: document.getElementById('auth-display-name'),
+    authEmail: document.getElementById('auth-email'),
+    authPassword: document.getElementById('auth-password'),
+    btnEmailSubmit: document.getElementById('btn-email-submit'),
+    authToggleMsg: document.getElementById('auth-toggle-msg'),
+    linkToggleRegister: document.getElementById('link-toggle-register'),
+    authPhoneNumber: document.getElementById('auth-phone-number'),
+    btnSendCode: document.getElementById('btn-send-code'),
+    phoneCodeField: document.getElementById('phone-code-field'),
+    authVerificationCode: document.getElementById('auth-verification-code'),
+    btnVerifyCode: document.getElementById('btn-verify-code'),
+    btnGoogleLogin: document.getElementById('btn-google-login'),
 };
 
 let activeEditingWeekKey = null;
@@ -47,19 +71,23 @@ function getAvatarText(name) {
     return name ? name.substring(0, 2) : '?';
 }
 
-// 渲染 Microsoft 登入狀態
+// 渲染登入狀態
 export async function renderAuthStatus() {
     const user = await getCurrentUser();
     const container = elements.authStatusContainer;
     
     if (user) {
+        const avatarBg = user.isFirebase 
+            ? 'linear-gradient(135deg, #f5820d 0%, #e65100 100%)' 
+            : 'linear-gradient(135deg, #0072ff 0%, #00c6ff 100%)';
+        const displaySubText = user.email || user.phoneNumber || '';
         container.innerHTML = `
             <div style="display: flex; align-items: center; gap: 0.75rem; background: rgba(255, 255, 255, 0.05); border: 1px solid var(--border-color); padding: 0.35rem 0.85rem; border-radius: var(--radius-md);">
-                <div class="avatar" style="background: linear-gradient(135deg, #0072ff 0%, #00c6ff 100%); width: 28px; height: 28px; font-size: 0.75rem;">${user.avatar}</div>
+                <div class="avatar" style="background: ${avatarBg}; width: 28px; height: 28px; font-size: 0.75rem;">${user.avatar}</div>
                 <div style="text-align: left; max-width: 120px;">
                     <div style="font-size: 0.85rem; font-weight: 600; line-height: 1.2; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${user.name}</div>
                     <div style="font-size: 0.7rem; color: var(--text-secondary); line-height: 1.2; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
-                        ${user.email} ${user.isDemo ? '<span style="color: var(--warning); font-size: 0.65rem;">(模擬)</span>' : ''}
+                        ${displaySubText} ${user.isDemo ? '<span style="color: var(--warning); font-size: 0.65rem;">(模擬)</span>' : ''}
                     </div>
                 </div>
                 <button class="btn-icon danger" id="btn-ms-logout" title="登出" style="width: 24px; height: 24px; border: none; background: transparent; color: var(--text-secondary); display: flex; align-items: center; justify-content: center; cursor: pointer;">
@@ -74,11 +102,17 @@ export async function renderAuthStatus() {
         });
     } else {
         container.innerHTML = `
-            <button class="btn btn-primary" id="btn-ms-login" style="padding: 0.5rem 1rem; font-size: 0.85rem; background: linear-gradient(135deg, #0078d4 0%, #005a9e 100%);">
-                <i class="fa-brands fa-microsoft"></i> Microsoft 登入
-            </button>
+            <div style="display: flex; gap: 0.5rem;">
+                <button class="btn btn-primary" id="btn-firebase-login" style="padding: 0.5rem 1rem; font-size: 0.85rem; background: linear-gradient(135deg, #f5820d 0%, #e65100 100%); border: none;">
+                    <i class="fa-solid fa-user-shield"></i> 登入 / 註冊
+                </button>
+                <button class="btn btn-secondary" id="btn-ms-login" style="padding: 0.5rem 0.75rem; font-size: 0.85rem; background: rgba(255,255,255,0.05); color: var(--text-secondary); border-color: var(--border-color);" title="Microsoft 登入">
+                    <i class="fa-brands fa-microsoft"></i>
+                </button>
+            </div>
         `;
         
+        document.getElementById('btn-firebase-login').addEventListener('click', openAuthModal);
         document.getElementById('btn-ms-login').addEventListener('click', async () => {
             const res = await login();
             if (res.needConfig) {
@@ -88,6 +122,18 @@ export async function renderAuthStatus() {
             }
         });
     }
+}
+
+export function openAuthModal() {
+    elements.authModal.classList.add('active');
+}
+
+export function closeAuthModal() {
+    elements.authModal.classList.remove('active');
+    // 重設電話驗證欄位
+    elements.phoneCodeField.style.display = 'none';
+    elements.authVerificationCode.value = '';
+    elements.authPhoneNumber.value = '';
 }
 
 export function openMsSettingsModal() {
@@ -397,6 +443,134 @@ export function closeEditModal() {
 
 // 註冊所有 UI 事件監聽器
 export function setupEventListeners() {
+    let isRegisterMode = false;
+
+    // 關閉 Firebase Auth Modal
+    elements.btnCloseAuthModal.addEventListener('click', closeAuthModal);
+    elements.btnCancelAuthModal.addEventListener('click', closeAuthModal);
+    elements.authModal.addEventListener('click', (e) => {
+        if (e.target === elements.authModal) closeAuthModal();
+    });
+
+    // 切換 Email / 電話 登入 Tabs
+    elements.tabEmailLogin.addEventListener('click', () => {
+        elements.tabEmailLogin.classList.add('active');
+        elements.tabPhoneLogin.classList.remove('active');
+        elements.tabEmailLogin.style.borderBottom = '2px solid var(--accent)';
+        elements.tabPhoneLogin.style.borderBottom = '2px solid transparent';
+        elements.tabEmailLogin.style.color = 'var(--text-primary)';
+        elements.tabPhoneLogin.style.color = 'var(--text-secondary)';
+        elements.emailSection.style.display = 'block';
+        elements.phoneSection.style.display = 'none';
+    });
+
+    elements.tabPhoneLogin.addEventListener('click', () => {
+        elements.tabPhoneLogin.classList.add('active');
+        elements.tabEmailLogin.classList.remove('active');
+        elements.tabPhoneLogin.style.borderBottom = '2px solid var(--accent)';
+        elements.tabEmailLogin.style.borderBottom = '2px solid transparent';
+        elements.tabPhoneLogin.style.color = 'var(--text-primary)';
+        elements.tabEmailLogin.style.color = 'var(--text-secondary)';
+        elements.phoneSection.style.display = 'block';
+        elements.emailSection.style.display = 'none';
+    });
+
+    // 切換 登入 / 註冊 模式
+    elements.linkToggleRegister.addEventListener('click', (e) => {
+        e.preventDefault();
+        isRegisterMode = !isRegisterMode;
+        if (isRegisterMode) {
+            elements.authModalTitle.innerText = '註冊帳戶';
+            elements.regNameField.style.display = 'block';
+            elements.btnEmailSubmit.innerText = '註冊';
+            elements.authToggleMsg.innerText = '已經有帳戶了嗎？';
+            elements.linkToggleRegister.innerText = '立即登入';
+        } else {
+            elements.authModalTitle.innerText = '帳戶登入';
+            elements.regNameField.style.display = 'none';
+            elements.btnEmailSubmit.innerText = '登入';
+            elements.authToggleMsg.innerText = '還沒有帳號嗎？';
+            elements.linkToggleRegister.innerText = '立即註冊';
+        }
+    });
+
+    // Email/Password 登入與註冊表單提交
+    elements.emailForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const email = elements.authEmail.value.trim();
+        const password = elements.authPassword.value.trim();
+        const displayName = elements.authDisplayName.value.trim();
+
+        try {
+            if (isRegisterMode) {
+                await registerWithEmail(email, password, displayName);
+                alert('註冊成功！');
+            } else {
+                await loginWithEmail(email, password);
+                alert('登入成功！');
+            }
+            closeAuthModal();
+            renderAll();
+        } catch (err) {
+            console.error(err);
+            alert(`驗證失敗: ${err.message}`);
+        }
+    });
+
+    // Google 登入
+    elements.btnGoogleLogin.addEventListener('click', async () => {
+        try {
+            await loginWithGoogle();
+            alert('Google 登入成功！');
+            closeAuthModal();
+            renderAll();
+        } catch (err) {
+            console.error(err);
+            alert(`Google 登入失敗: ${err.message}`);
+        }
+    });
+
+    // 電話簡訊傳送
+    elements.btnSendCode.addEventListener('click', async () => {
+        const phone = elements.authPhoneNumber.value.trim();
+        if (!phone) {
+            alert('請輸入電話號碼！');
+            return;
+        }
+        try {
+            elements.btnSendCode.disabled = true;
+            elements.btnSendCode.innerText = '傳送中...';
+            await sendPhoneVerificationCode(phone, 'recaptcha-container');
+            alert('簡訊驗證碼已發送，請注意查收！');
+            elements.phoneCodeField.style.display = 'block';
+            elements.btnSendCode.innerText = '重新傳送簡訊驗證碼';
+            elements.btnSendCode.disabled = false;
+        } catch (err) {
+            console.error(err);
+            alert(`簡訊發送失敗: ${err.message}`);
+            elements.btnSendCode.innerText = '傳送簡訊驗證碼';
+            elements.btnSendCode.disabled = false;
+        }
+    });
+
+    // 電話簡訊驗證
+    elements.btnVerifyCode.addEventListener('click', async () => {
+        const code = elements.authVerificationCode.value.trim();
+        if (!code) {
+            alert('請輸入驗證碼！');
+            return;
+        }
+        try {
+            await confirmPhoneVerificationCode(code);
+            alert('電話驗證登入成功！');
+            closeAuthModal();
+            renderAll();
+        } catch (err) {
+            console.error(err);
+            alert(`驗證碼錯誤: ${err.message}`);
+        }
+    });
+
     // 新增成員
     elements.addMemberForm.addEventListener('submit', (e) => {
         e.preventDefault();
