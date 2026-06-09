@@ -44,10 +44,7 @@ const elements = {
     authModalTitle: document.getElementById('auth-modal-title'),
     btnCloseAuthModal: document.getElementById('btn-close-auth-modal'),
     btnCancelAuthModal: document.getElementById('btn-cancel-auth-modal'),
-    tabEmailLogin: document.getElementById('tab-email-login'),
-    tabPhoneLogin: document.getElementById('tab-phone-login'),
     emailSection: document.getElementById('auth-email-section'),
-    phoneSection: document.getElementById('auth-phone-section'),
     emailForm: document.getElementById('email-auth-form'),
     regNameField: document.getElementById('reg-name-field'),
     authDisplayName: document.getElementById('auth-display-name'),
@@ -56,11 +53,6 @@ const elements = {
     btnEmailSubmit: document.getElementById('btn-email-submit'),
     authToggleMsg: document.getElementById('auth-toggle-msg'),
     linkToggleRegister: document.getElementById('link-toggle-register'),
-    authPhoneNumber: document.getElementById('auth-phone-number'),
-    btnSendCode: document.getElementById('btn-send-code'),
-    phoneCodeField: document.getElementById('phone-code-field'),
-    authVerificationCode: document.getElementById('auth-verification-code'),
-    btnVerifyCode: document.getElementById('btn-verify-code'),
     btnGoogleLogin: document.getElementById('btn-google-login'),
 };
 
@@ -130,10 +122,6 @@ export function openAuthModal() {
 
 export function closeAuthModal() {
     elements.authModal.classList.remove('active');
-    // 重設電話驗證欄位
-    elements.phoneCodeField.style.display = 'none';
-    elements.authVerificationCode.value = '';
-    elements.authPhoneNumber.value = '';
 }
 
 export function openMsSettingsModal() {
@@ -452,28 +440,7 @@ export function setupEventListeners() {
         if (e.target === elements.authModal) closeAuthModal();
     });
 
-    // 切換 Email / 電話 登入 Tabs
-    elements.tabEmailLogin.addEventListener('click', () => {
-        elements.tabEmailLogin.classList.add('active');
-        elements.tabPhoneLogin.classList.remove('active');
-        elements.tabEmailLogin.style.borderBottom = '2px solid var(--accent)';
-        elements.tabPhoneLogin.style.borderBottom = '2px solid transparent';
-        elements.tabEmailLogin.style.color = 'var(--text-primary)';
-        elements.tabPhoneLogin.style.color = 'var(--text-secondary)';
-        elements.emailSection.style.display = 'block';
-        elements.phoneSection.style.display = 'none';
-    });
 
-    elements.tabPhoneLogin.addEventListener('click', () => {
-        elements.tabPhoneLogin.classList.add('active');
-        elements.tabEmailLogin.classList.remove('active');
-        elements.tabPhoneLogin.style.borderBottom = '2px solid var(--accent)';
-        elements.tabEmailLogin.style.borderBottom = '2px solid transparent';
-        elements.tabPhoneLogin.style.color = 'var(--text-primary)';
-        elements.tabEmailLogin.style.color = 'var(--text-secondary)';
-        elements.phoneSection.style.display = 'block';
-        elements.emailSection.style.display = 'none';
-    });
 
     // 切換 登入 / 註冊 模式
     elements.linkToggleRegister.addEventListener('click', (e) => {
@@ -530,46 +497,7 @@ export function setupEventListeners() {
         }
     });
 
-    // 電話簡訊傳送
-    elements.btnSendCode.addEventListener('click', async () => {
-        const phone = elements.authPhoneNumber.value.trim();
-        if (!phone) {
-            alert('請輸入電話號碼！');
-            return;
-        }
-        try {
-            elements.btnSendCode.disabled = true;
-            elements.btnSendCode.innerText = '傳送中...';
-            await sendPhoneVerificationCode(phone, 'recaptcha-container');
-            alert('簡訊驗證碼已發送，請注意查收！');
-            elements.phoneCodeField.style.display = 'block';
-            elements.btnSendCode.innerText = '重新傳送簡訊驗證碼';
-            elements.btnSendCode.disabled = false;
-        } catch (err) {
-            console.error(err);
-            alert(`簡訊發送失敗: ${err.message}`);
-            elements.btnSendCode.innerText = '傳送簡訊驗證碼';
-            elements.btnSendCode.disabled = false;
-        }
-    });
 
-    // 電話簡訊驗證
-    elements.btnVerifyCode.addEventListener('click', async () => {
-        const code = elements.authVerificationCode.value.trim();
-        if (!code) {
-            alert('請輸入驗證碼！');
-            return;
-        }
-        try {
-            await confirmPhoneVerificationCode(code);
-            alert('電話驗證登入成功！');
-            closeAuthModal();
-            renderAll();
-        } catch (err) {
-            console.error(err);
-            alert(`驗證碼錯誤: ${err.message}`);
-        }
-    });
 
     // 新增成員
     elements.addMemberForm.addEventListener('submit', (e) => {
