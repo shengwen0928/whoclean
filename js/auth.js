@@ -82,15 +82,15 @@ export function initTeamsSdk() {
                             resolve(null);
                         }
                     }).catch(err => {
-                        console.warn("取得 Teams Context 失敗 (可能不在 Teams 內執行):", err);
+                        console.log("取得 Teams Context 失敗 (可能不在 Teams 內執行):", err);
                         resolve(null);
                     });
                 }).catch(err => {
-                    console.warn("初始化 Teams SDK 失敗 (可能不在 Teams 內執行):", err);
+                    console.log("初始化 Teams SDK 失敗 (可能不在 Teams 內執行):", err);
                     resolve(null);
                 });
             } catch (e) {
-                console.warn("偵測到 Teams 物件但初始化失敗:", e);
+                console.log("偵測到 Teams 物件但初始化失敗:", e);
                 resolve(null);
             }
         } else {
