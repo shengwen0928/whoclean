@@ -282,6 +282,7 @@ export function renderMembers() {
         // --- 拖曳事件綁定 ---
         item.addEventListener('dragstart', (e) => {
             item.classList.add('dragging');
+            elements.membersContainer.classList.add('is-dragging');
             draggedMemberId = m.id;
             e.dataTransfer.setData('text/plain', m.id);
             e.dataTransfer.effectAllowed = 'move';
@@ -289,6 +290,7 @@ export function renderMembers() {
 
         item.addEventListener('dragend', () => {
             item.classList.remove('dragging');
+            elements.membersContainer.classList.remove('is-dragging');
             draggedMemberId = null;
             document.querySelectorAll('.member-item').forEach(el => el.classList.remove('drag-over'));
         });
