@@ -101,8 +101,6 @@ export function initTeamsSdk() {
 
 let firebaseAuth = null;
 let currentFirebaseUser = null;
-let phoneConfirmationResult = null;
-let recaptchaVerifier = null;
 
 // 初始化 Firebase Auth
 export async function initFirebaseAuth(config) {
@@ -208,31 +206,6 @@ export async function loginWithGoogle() {
     return result.user;
 }
 
-// Firebase - 傳送電話簡訊驗證碼
-export async function sendPhoneVerificationCode(phoneNumber, recaptchaContainerId) {
-    if (!firebaseAuth) throw new Error("Firebase Auth 未初始化");
-    const { signInWithPhoneNumber, RecaptchaVerifier } = await import('https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js');
-    
-    // 初始化 Recaptcha
-    if (!recaptchaVerifier) {
-        recaptchaVerifier = new RecaptchaVerifier(firebaseAuth, recaptchaContainerId, {
-            size: 'invisible',
-            callback: (response) => {
-                console.log("Recaptcha verified");
-            }
-        });
-    }
-    
-    phoneConfirmationResult = await signInWithPhoneNumber(firebaseAuth, phoneNumber, recaptchaVerifier);
-    return true;
-}
-
-// Firebase - 確認電話簡訊驗證碼
-export async function confirmPhoneVerificationCode(verificationCode) {
-    if (!phoneConfirmationResult) throw new Error("尚未傳送簡訊驗證碼");
-    const result = await phoneConfirmationResult.confirm(verificationCode);
-    return result.user;
-}
 
 // 執行登入
 export async function login() {
