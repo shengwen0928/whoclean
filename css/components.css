@@ -244,6 +244,23 @@
     border: 1px solid rgba(255, 255, 255, 0.05);
     border-radius: var(--radius-md);
     transition: all var(--transition-fast);
+    cursor: grab;
+    user-select: none;
+}
+
+.member-item:active {
+    cursor: grabbing;
+}
+
+.member-item.dragging {
+    opacity: 0.4;
+    border: 1px dashed var(--accent);
+    background: rgba(255, 255, 255, 0.01);
+}
+
+.member-item.drag-over {
+    border: 1px solid var(--accent);
+    background: rgba(138, 43, 226, 0.08);
 }
 
 .member-item:hover {
