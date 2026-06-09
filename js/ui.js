@@ -54,10 +54,19 @@ const elements = {
     authToggleMsg: document.getElementById('auth-toggle-msg'),
     linkToggleRegister: document.getElementById('link-toggle-register'),
     btnGoogleLogin: document.getElementById('btn-google-login'),
+    
+    // Edit Member Modal Elements
+    editMemberModal: document.getElementById('edit-member-modal'),
+    btnCloseEditMemberModal: document.getElementById('btn-close-edit-member-modal'),
+    btnCancelEditMemberModal: document.getElementById('btn-cancel-edit-member-modal'),
+    editMemberName: document.getElementById('edit-member-name'),
+    editMemberEmail: document.getElementById('edit-member-email'),
+    btnSaveEditMember: document.getElementById('btn-save-edit-member'),
 };
 
 let activeEditingWeekKey = null;
 let draggedMemberId = null;
+let activeEditingMemberId = null;
 
 // 取得頭像縮寫文字
 function getAvatarText(name) {
@@ -123,6 +132,22 @@ export function openAuthModal() {
 
 export function closeAuthModal() {
     elements.authModal.classList.remove('active');
+}
+
+export function openEditMemberModal(memberId) {
+    activeEditingMemberId = memberId;
+    const members = getMembers();
+    const member = members.find(m => m.id === memberId);
+    if (member) {
+        elements.editMemberName.value = member.name;
+        elements.editMemberEmail.value = member.email || '';
+        elements.editMemberModal.classList.add('active');
+    }
+}
+
+export function closeEditMemberModal() {
+    elements.editMemberModal.classList.remove('active');
+    activeEditingMemberId = null;
 }
 
 export function openMsSettingsModal() {
@@ -250,16 +275,8 @@ export function renderMembers() {
         item.setAttribute('data-id', m.id);
         
         let emailHtml = '';
-        let directMessageBtn = '';
         if (m.email) {
             emailHtml = `<div style="font-size: 0.75rem; color: var(--text-muted); max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${m.email}</div>`;
-            const msgText = `🧹 哈囉，溫馨提醒您本週值日輪值已排定，感謝您的配合！`;
-            const teamsDeepLink = `https://teams.microsoft.com/l/chat/0/0?users=${m.email}&message=${encodeURIComponent(msgText)}`;
-            directMessageBtn = `
-                <a class="btn-icon" href="${teamsDeepLink}" target="_blank" title="發送 Teams 私訊" style="color: #5ca1e6; border-color: rgba(0, 120, 212, 0.2); background: rgba(0, 120, 212, 0.05); text-decoration: none; display: inline-flex; align-items: center; justify-content: center; cursor: grab;">
-                    <i class="fa-regular fa-comment-dots"></i>
-                </a>
-            `;
         }
 
         item.innerHTML = `
@@ -272,7 +289,9 @@ export function renderMembers() {
                 </div>
             </div>
             <div style="display: flex; gap: 0.35rem; align-items: center;" class="member-actions-wrapper">
-                ${directMessageBtn}
+                <button class="btn-icon edit-member-btn" data-id="${m.id}" title="修改成員資訊" style="cursor: pointer;">
+                    <i class="fa-regular fa-pen-to-square"></i>
+                </button>
                 <button class="btn-icon danger delete-member-btn" data-id="${m.id}" title="刪除成員" style="cursor: pointer;">
                     <i class="fa-regular fa-trash-can"></i>
                 </button>
@@ -342,6 +361,13 @@ export function renderMembers() {
         });
         actionsWrapper.addEventListener('mouseleave', () => {
             item.setAttribute('draggable', 'true');
+        });
+
+        // 修改事件
+        item.querySelector('.edit-member-btn').addEventListener('click', (e) => {
+            e.stopPropagation(); // 阻止氣泡事件，避免觸發拖曳相關操作
+            const id = e.currentTarget.getAttribute('data-id');
+            openEditMemberModal(id);
         });
 
         // 刪除事件
@@ -611,6 +637,37 @@ export function setupEventListeners() {
         closeMsSettingsModal();
         renderAll();
         alert('成功！已使用模擬 Microsoft 帳戶登入。');
+    });
+
+    // 編輯成員 Modal 事件開關
+    elements.btnCloseEditMemberModal.addEventListener('click', closeEditMemberModal);
+    elements.btnCancelEditMemberModal.addEventListener('click', closeEditMemberModal);
+    elements.editMemberModal.addEventListener('click', (e) => {
+        if (e.target === elements.editMemberModal) closeEditMemberModal();
+    });
+
+    // 儲存修改的成員資料
+    elements.btnSaveEditMember.addEventListener('click', () => {
+        if (!activeEditingMemberId) return;
+        const newName = elements.editMemberName.value.trim();
+        const newEmail = elements.editMemberEmail.value.trim();
+        
+        if (!newName) {
+            alert('姓名不能為空！');
+            return;
+        }
+
+        const members = getMembers();
+        const memberIdx = members.findIndex(m => m.id === activeEditingMemberId);
+        if (memberIdx !== -1) {
+            members[memberIdx].name = newName;
+            members[memberIdx].email = newEmail;
+            
+            saveMembers(members);
+            closeEditMemberModal();
+            renderAll();
+            alert('成員資料修改成功！');
+        }
     });
 }
 
