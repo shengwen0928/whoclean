@@ -99,8 +99,56 @@ export function initTeamsSdk() {
     });
 }
 
+let firebaseAuth = null;
+let currentFirebaseUser = null;
+let phoneConfirmationResult = null;
+let recaptchaVerifier = null;
+
+// 初始化 Firebase Auth
+export async function initFirebaseAuth(config) {
+    if (!config || !config.apiKey) return;
+    try {
+        const { initializeApp, getApp } = await import('https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js');
+        const { getAuth, onAuthStateChanged } = await import('https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js');
+        
+        let app;
+        try {
+            app = getApp();
+        } catch {
+            app = initializeApp(config);
+        }
+        
+        firebaseAuth = getAuth(app);
+        
+        onAuthStateChanged(firebaseAuth, (user) => {
+            if (user) {
+                currentFirebaseUser = {
+                    uid: user.uid,
+                    name: user.displayName || user.email || user.phoneNumber || 'Firebase 用戶',
+                    email: user.email || '',
+                    avatar: (user.displayName || user.email || user.phoneNumber || 'FB').substring(0, 2),
+                    phoneNumber: user.phoneNumber || '',
+                    isFirebase: true
+                };
+            } else {
+                currentFirebaseUser = null;
+            }
+            if (window.renderAllAppUI) {
+                window.renderAllAppUI();
+            }
+        });
+    } catch (e) {
+        console.error("Firebase Auth 初始化失敗:", e);
+    }
+}
+
 // 取得目前登入的使用者
 export async function getCurrentUser() {
+    // 0. 優先檢查 Firebase 登入
+    if (currentFirebaseUser) {
+        return currentFirebaseUser;
+    }
+
     // 1. 優先檢查 Teams 帳戶 (若在 Teams 內執行會自動抓到)
     if (teamsUser) {
         return teamsUser;
@@ -130,6 +178,60 @@ export async function getCurrentUser() {
     }
 
     return null;
+}
+
+// Firebase - Email 註冊
+export async function registerWithEmail(email, password, displayName) {
+    if (!firebaseAuth) throw new Error("Firebase Auth 未初始化");
+    const { createUserWithEmailAndPassword, updateProfile } = await import('https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js');
+    const userCredential = await createUserWithEmailAndPassword(firebaseAuth, email, password);
+    if (displayName) {
+        await updateProfile(userCredential.user, { displayName });
+    }
+    return userCredential.user;
+}
+
+// Firebase - Email 登入
+export async function loginWithEmail(email, password) {
+    if (!firebaseAuth) throw new Error("Firebase Auth 未初始化");
+    const { signInWithEmailAndPassword } = await import('https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js');
+    const userCredential = await signInWithEmailAndPassword(firebaseAuth, email, password);
+    return userCredential.user;
+}
+
+// Firebase - Google 登入
+export async function loginWithGoogle() {
+    if (!firebaseAuth) throw new Error("Firebase Auth 未初始化");
+    const { signInWithPopup, GoogleAuthProvider } = await import('https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js');
+    const provider = new GoogleAuthProvider();
+    const result = await signInWithPopup(firebaseAuth, provider);
+    return result.user;
+}
+
+// Firebase - 傳送電話簡訊驗證碼
+export async function sendPhoneVerificationCode(phoneNumber, recaptchaContainerId) {
+    if (!firebaseAuth) throw new Error("Firebase Auth 未初始化");
+    const { signInWithPhoneNumber, RecaptchaVerifier } = await import('https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js');
+    
+    // 初始化 Recaptcha
+    if (!recaptchaVerifier) {
+        recaptchaVerifier = new RecaptchaVerifier(firebaseAuth, recaptchaContainerId, {
+            size: 'invisible',
+            callback: (response) => {
+                console.log("Recaptcha verified");
+            }
+        });
+    }
+    
+    phoneConfirmationResult = await signInWithPhoneNumber(firebaseAuth, phoneNumber, recaptchaVerifier);
+    return true;
+}
+
+// Firebase - 確認電話簡訊驗證碼
+export async function confirmPhoneVerificationCode(verificationCode) {
+    if (!phoneConfirmationResult) throw new Error("尚未傳送簡訊驗證碼");
+    const result = await phoneConfirmationResult.confirm(verificationCode);
+    return result.user;
 }
 
 // 執行登入
@@ -166,6 +268,12 @@ export async function login() {
 
 // 執行登出
 export async function logout() {
+    // 優先登出 Firebase
+    if (firebaseAuth && firebaseAuth.currentUser) {
+        const { signOut } = await import('https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js');
+        await signOut(firebaseAuth);
+    }
+
     const demoUser = getDemoUser();
     if (demoUser) {
         saveDemoUser(null);
