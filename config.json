@@ -8,5 +8,13 @@
   "anchor": {
     "weekKey": "2026-W24",
     "memberName": "張三"
+  },
+  "firebaseConfig": {
+    "apiKey": "",
+    "authDomain": "",
+    "projectId": "",
+    "storageBucket": "",
+    "messagingSenderId": "",
+    "appId": ""
   }
 }
