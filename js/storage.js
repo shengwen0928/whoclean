@@ -164,7 +164,8 @@ export function saveRotationAnchor(anchor) {
 
 // 動態排班計算：依據成員順序與週數偏移量，永遠輪流
 export function getSchedule() {
-    const members = getMembers();
+    const allMembers = getMembers();
+    const members = allMembers.filter(m => m.active !== false);
     if (members.length === 0) return [];
 
     let anchor = getRotationAnchor();
