@@ -220,6 +220,30 @@
         </div>
     </div>
 
+    <!-- Modal for Editing Member -->
+    <div class="modal-overlay" id="edit-member-modal">
+        <div class="modal-content" style="max-width: 400px;">
+            <div class="modal-header">
+                <h3 class="modal-title">編輯成員資訊</h3>
+                <button class="modal-close" id="btn-close-edit-member-modal">&times;</button>
+            </div>
+            <div class="modal-body" style="text-align: left;">
+                <div style="margin-bottom: 0.75rem;">
+                    <label style="font-size: 0.85rem; color: var(--text-secondary); text-align: left; display: block;">姓名:</label>
+                    <input type="text" class="form-control" id="edit-member-name" required max="10">
+                </div>
+                <div>
+                    <label style="font-size: 0.85rem; color: var(--text-secondary); text-align: left; display: block;">Teams Email (選填):</label>
+                    <input type="email" class="form-control" id="edit-member-email">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" id="btn-cancel-edit-member-modal">取消</button>
+                <button class="btn btn-primary" id="btn-save-edit-member">儲存</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Application Script entry point -->
     <script type="module" src="js/app.js"></script>
 </body>
