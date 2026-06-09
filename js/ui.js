@@ -291,7 +291,9 @@ export function renderMembers() {
         item.addEventListener('dragend', () => {
             item.classList.remove('dragging');
             elements.membersContainer.classList.remove('is-dragging');
-            draggedMemberId = null;
+            setTimeout(() => {
+                draggedMemberId = null;
+            }, 100);
             document.querySelectorAll('.member-item').forEach(el => el.classList.remove('drag-over'));
         });
 
