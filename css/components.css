@@ -263,6 +263,10 @@
     background: rgba(138, 43, 226, 0.08);
 }
 
+.member-list.is-dragging .member-item * {
+    pointer-events: none;
+}
+
 .member-item:hover {
     background: rgba(255, 255, 255, 0.05);
     border-color: rgba(255, 255, 255, 0.1);
