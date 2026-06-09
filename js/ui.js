@@ -1,6 +1,6 @@
 import { getMembers, getSchedule, addMember, removeMember, updateWeekCleaner, moveMemberUp, moveMemberDown, getTeamsWebhookUrl, saveTeamsWebhookUrl, getPersonalTeamsWebhookUrl, savePersonalTeamsWebhookUrl } from './storage.js';
 import { getYearWeekString, getWeekRangeText, downloadIcsFile } from './utils.js';
-import { getMicrosoftClientId, saveMicrosoftClientId, getCurrentUser, login, logout, saveDemoUser, registerWithEmail, loginWithEmail, loginWithGoogle, sendPhoneVerificationCode, confirmPhoneVerificationCode } from './auth.js';
+import { getMicrosoftClientId, saveMicrosoftClientId, getCurrentUser, login, logout, saveDemoUser, registerWithEmail, loginWithEmail, loginWithGoogle } from './auth.js';
 
 // DOM 元素快取
 const elements = {
