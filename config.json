@@ -10,11 +10,11 @@
     "memberName": "張三"
   },
   "firebaseConfig": {
-    "apiKey": "",
-    "authDomain": "",
-    "projectId": "",
-    "storageBucket": "",
-    "messagingSenderId": "",
-    "appId": ""
+    "apiKey": "AIzaSyAPO5nWTAGxTwdP2x_UAPjMDVFuRfjhVPQ",
+    "authDomain": "appdatabase-40950.firebaseapp.com",
+    "projectId": "appdatabase-40950",
+    "storageBucket": "appdatabase-40950.firebasestorage.app",
+    "messagingSenderId": "33008912687",
+    "appId": "1:33008912687:web:a880821f331b96d499f9da"
   }
 }
