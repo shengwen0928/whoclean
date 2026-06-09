@@ -495,6 +495,7 @@ export function openEditModal(weekKey) {
         label.className = 'member-checkbox-item';
         label.innerHTML = `
             <input type="checkbox" value="${m.id}" ${isChecked ? 'checked' : ''}>
+            <span class="custom-checkbox"></span>
             <div class="avatar" style="background: ${m.color}; width: 28px; height: 28px; font-size: 0.75rem;">${getAvatarText(m.name)}</div>
             <span>${m.name}</span>
         `;
