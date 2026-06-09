@@ -10,7 +10,28 @@ const STORAGE_KEYS = {
     PERSONAL_TEAMS_WEBHOOK: 'whoclean_personal_teams_webhook',
 };
 
-export function initStorage() {
+let firebaseApp = null;
+let db = null;
+let isFirebaseEnabled = false;
+
+// 將當前 LocalStorage 的資料同步寫入 Firebase
+async function syncToFirebase() {
+    if (!isFirebaseEnabled || !db) return;
+    try {
+        const { doc, setDoc } = await import('https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js');
+        await setDoc(doc(db, "whoclean", "settings"), {
+            members: getMembers(),
+            anchor: getRotationAnchor(),
+            teamsWebhook: getTeamsWebhookUrl(),
+            personalTeamsWebhook: getPersonalTeamsWebhookUrl()
+        });
+        console.log("資料已成功同步到 Firebase");
+    } catch (e) {
+        console.error("同步到 Firebase 失敗:", e);
+    }
+}
+
+export async function initStorage() {
     if (!localStorage.getItem(STORAGE_KEYS.MEMBERS)) {
         localStorage.setItem(STORAGE_KEYS.MEMBERS, JSON.stringify([]));
     }
@@ -23,6 +44,40 @@ export function initStorage() {
     if (!localStorage.getItem(STORAGE_KEYS.PERSONAL_TEAMS_WEBHOOK)) {
         localStorage.setItem(STORAGE_KEYS.PERSONAL_TEAMS_WEBHOOK, '');
     }
+
+    // 嘗試讀取 config.json 來初始化 Firebase
+    try {
+        const response = await fetch('./config.json');
+        if (response.ok) {
+            const config = await response.json();
+            if (config.firebaseConfig && config.firebaseConfig.apiKey) {
+                console.log("偵測到 Firebase 設定，開始初始化...");
+                const { initializeApp } = await import('https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js');
+                const { getFirestore, doc, getDoc } = await import('https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js');
+                
+                firebaseApp = initializeApp(config.firebaseConfig);
+                db = getFirestore(firebaseApp);
+                isFirebaseEnabled = true;
+
+                // 從雲端抓取最新資料
+                const docRef = doc(db, "whoclean", "settings");
+                const docSnap = await getDoc(docRef);
+                if (docSnap.exists()) {
+                    const data = docSnap.data();
+                    if (data.members) localStorage.setItem(STORAGE_KEYS.MEMBERS, JSON.stringify(data.members));
+                    if (data.anchor) localStorage.setItem(STORAGE_KEYS.ROTATION_ANCHOR, JSON.stringify(data.anchor));
+                    if (data.teamsWebhook !== undefined) localStorage.setItem(STORAGE_KEYS.TEAMS_WEBHOOK, data.teamsWebhook);
+                    if (data.personalTeamsWebhook !== undefined) localStorage.setItem(STORAGE_KEYS.PERSONAL_TEAMS_WEBHOOK, data.personalTeamsWebhook);
+                    console.log("已從 Firebase 同步最新資料至本地");
+                } else {
+                    // 若雲端無資料，將本地目前資料上傳雲端進行初始備份
+                    await syncToFirebase();
+                }
+            }
+        }
+    } catch (e) {
+        console.error("Firebase 初始化或資料載入失敗，將降級使用 LocalStorage:", e);
+    }
 }
 
 export function getTeamsWebhookUrl() {
@@ -31,6 +86,7 @@ export function getTeamsWebhookUrl() {
 
 export function saveTeamsWebhookUrl(url) {
     localStorage.setItem(STORAGE_KEYS.TEAMS_WEBHOOK, url.trim());
+    syncToFirebase();
 }
 
 export function getPersonalTeamsWebhookUrl() {
@@ -39,6 +95,7 @@ export function getPersonalTeamsWebhookUrl() {
 
 export function savePersonalTeamsWebhookUrl(url) {
     localStorage.setItem(STORAGE_KEYS.PERSONAL_TEAMS_WEBHOOK, url.trim());
+    syncToFirebase();
 }
 
 export function getMembers() {
@@ -47,6 +104,7 @@ export function getMembers() {
 
 export function saveMembers(members) {
     localStorage.setItem(STORAGE_KEYS.MEMBERS, JSON.stringify(members));
+    syncToFirebase();
 }
 
 export function addMember(name, email = '') {
@@ -101,6 +159,7 @@ export function getRotationAnchor() {
 
 export function saveRotationAnchor(anchor) {
     localStorage.setItem(STORAGE_KEYS.ROTATION_ANCHOR, JSON.stringify(anchor));
+    syncToFirebase();
 }
 
 // 動態排班計算：依據成員順序與週數偏移量，永遠輪流
