@@ -62,6 +62,7 @@ const elements = {
     editMemberName: document.getElementById('edit-member-name'),
     editMemberEmail: document.getElementById('edit-member-email'),
     btnSaveEditMember: document.getElementById('btn-save-edit-member'),
+    editMemberActive: document.getElementById('edit-member-active'),
 };
 
 let activeEditingWeekKey = null;
@@ -141,6 +142,7 @@ export function openEditMemberModal(memberId) {
     if (member) {
         elements.editMemberName.value = member.name;
         elements.editMemberEmail.value = member.email || '';
+        elements.editMemberActive.checked = member.active !== false;
         elements.editMemberModal.classList.add('active');
     }
 }
@@ -274,16 +276,22 @@ export function renderMembers() {
         item.setAttribute('draggable', 'true');
         item.setAttribute('data-id', m.id);
         
+        if (m.active === false) {
+            item.style.opacity = '0.55';
+        }
+        
         let emailHtml = '';
         if (m.email) {
             emailHtml = `<div style="font-size: 0.75rem; color: var(--text-muted); max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${m.email}</div>`;
         }
 
+        const activeStatusHtml = m.active !== false ? '' : '<span style="color: var(--text-muted); font-size: 0.75rem; font-style: italic; margin-left: 0.4rem;">(已停用)</span>';
+
         item.innerHTML = `
             <div class="member-profile">
                 <div class="avatar" style="background: ${m.color}">${getAvatarText(m.name)}</div>
                 <div style="text-align: left;">
-                    <div class="member-name">${m.name}</div>
+                    <div class="member-name">${m.name}${activeStatusHtml}</div>
                     <div class="member-count">第 ${idx + 1} 順位</div>
                     ${emailHtml}
                 </div>
@@ -651,6 +659,7 @@ export function setupEventListeners() {
         if (!activeEditingMemberId) return;
         const newName = elements.editMemberName.value.trim();
         const newEmail = elements.editMemberEmail.value.trim();
+        const newActive = elements.editMemberActive.checked;
         
         if (!newName) {
             alert('姓名不能為空！');
@@ -662,6 +671,7 @@ export function setupEventListeners() {
         if (memberIdx !== -1) {
             members[memberIdx].name = newName;
             members[memberIdx].email = newEmail;
+            members[memberIdx].active = newActive;
             
             saveMembers(members);
             closeEditMemberModal();
