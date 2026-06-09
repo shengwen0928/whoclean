@@ -57,6 +57,7 @@ const elements = {
 };
 
 let activeEditingWeekKey = null;
+let draggedMemberId = null;
 
 // 取得頭像縮寫文字
 function getAvatarText(name) {
@@ -281,13 +282,14 @@ export function renderMembers() {
         // --- 拖曳事件綁定 ---
         item.addEventListener('dragstart', (e) => {
             item.classList.add('dragging');
+            draggedMemberId = m.id;
             e.dataTransfer.setData('text/plain', m.id);
-            // 設定拖曳時的視覺回饋效果
             e.dataTransfer.effectAllowed = 'move';
         });
 
         item.addEventListener('dragend', () => {
             item.classList.remove('dragging');
+            draggedMemberId = null;
             document.querySelectorAll('.member-item').forEach(el => el.classList.remove('drag-over'));
         });
 
@@ -311,11 +313,11 @@ export function renderMembers() {
             e.preventDefault();
             item.classList.remove('drag-over');
             
-            const draggedId = e.dataTransfer.getData('text/plain');
+            const sourceId = draggedMemberId || e.dataTransfer.getData('text/plain');
             const targetId = m.id;
             
-            if (draggedId && draggedId !== targetId) {
-                const draggedIdx = members.findIndex(mem => mem.id === draggedId);
+            if (sourceId && sourceId !== targetId) {
+                const draggedIdx = members.findIndex(mem => mem.id === sourceId);
                 const targetIdx = members.findIndex(mem => mem.id === targetId);
                 
                 if (draggedIdx !== -1 && targetIdx !== -1) {
