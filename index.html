@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>WhoClean - 本周值日生打掃紀錄工具</title>
     <meta name="description" content="WhoClean 是一個極簡、現代且美觀的團隊/家庭本周值日生打掃紀錄與排班管理工具。">
+    <meta name="theme-color" content="#0E0F14">
     <!-- FontAwesome Icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <!-- Microsoft Authentication Library (MSAL.js) -->
@@ -12,103 +13,117 @@
     <!-- Microsoft Teams JS Client SDK -->
     <script src="https://res.cdn.office.net/teams-js/2.20.0/js/MicrosoftTeams.min.js" crossorigin="anonymous"></script>
     <!-- Core & Components Stylesheet -->
-    <link rel="stylesheet" href="css/style.css">
-    <link rel="stylesheet" href="css/components.css">
+    <link rel="stylesheet" href="css/style.css?v=20260611">
+    <link rel="stylesheet" href="css/components.css?v=20260611">
     <!-- Prevent favicon 404 -->
     <link rel="icon" href="data:,">
 </head>
 <body>
-    <div class="container">
-        <header>
-            <div class="logo-section">
-                <h1>WhoClean <i>🧹</i></h1>
-                <p>輕鬆追蹤與記錄本周是誰打掃，維護環境整潔！</p>
+    <!-- 導覽列 -->
+    <header class="topbar">
+        <div class="topbar-inner">
+            <div class="brand">
+                <div class="brand-mark">🧹</div>
+                <div class="brand-text">
+                    <span class="brand-name">WhoClean</span>
+                    <span class="brand-tagline">值日生排班 · 打掃提醒</span>
+                </div>
             </div>
-            <div class="header-actions" style="display: flex; align-items: center; gap: 0.75rem;">
-                <button class="btn btn-secondary" id="btn-ms-settings" title="Microsoft 整合設定" style="width: 38px; height: 38px; padding: 0;">
-                    <i class="fa-solid fa-gear"></i>
-                </button>
+            <div class="header-actions">
                 <div id="auth-status-container">
                     <!-- Dynamic auth interface -->
                 </div>
+                <button class="btn-icon" id="btn-ms-settings" title="系統與整合設定" aria-label="系統與整合設定">
+                    <i class="fa-solid fa-gear"></i>
+                </button>
             </div>
-        </header>
+        </div>
+    </header>
 
-        <!-- Main Dashboard Layout -->
-        <div class="dashboard-grid">
-            <!-- Left Column: Hero & Schedule -->
-            <div class="left-column">
-                <!-- Current Week Hero Card -->
-                <div class="hero-card" id="current-week-hero">
-                    <div class="hero-body">
-                        <div class="avatar lg" id="hero-avatar" style="background: linear-gradient(135deg, #8a2be2 0%, #00f2fe 100%);">
-                            ?
+    <main class="page">
+        <!-- 值日生佈告看板 -->
+        <section class="billboard">
+            <div class="billboard-main">
+                <div class="kicker">本週值日生 ON DUTY</div>
+                <div class="duty-row">
+                    <div class="avatar giant" id="hero-avatar" style="background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);">
+                        ?
+                    </div>
+                    <div class="duty-info">
+                        <div class="duty-name" id="hero-cleaners-container">
+                            <span class="hero-cleaner-name">載入中...</span>
                         </div>
-                        <div class="hero-info">
-                            <div class="hero-label">本週值日生 (CURRENT DUTY)</div>
-                            <div class="hero-cleaners" id="hero-cleaners-container">
-                                <span class="hero-cleaner-name">載入中...</span>
-                            </div>
-                            <div class="hero-meta">
-                                <span id="hero-week-str"><i class="fa-regular fa-calendar"></i> ----W--</span>
-                                <span id="hero-date-range"><i class="fa-solid fa-clock"></i> --/-- ~ --/--</span>
-                            </div>
-                        </div>
-                        <div class="hero-action" id="hero-action-container" style="display: flex; gap: 0.75rem; flex-direction: column;">
-                            <!-- Rendered dynamically -->
+                        <div class="duty-meta">
+                            <span class="chip" id="hero-week-str"><i class="fa-regular fa-calendar"></i> ----W--</span>
+                            <span class="chip" id="hero-date-range"><i class="fa-regular fa-clock"></i> --/-- ~ --/--</span>
                         </div>
                     </div>
                 </div>
+                <div class="hero-progress" id="hero-progress">
+                    <!-- 五日方塊 Rendered dynamically -->
+                </div>
+            </div>
+            <aside class="billboard-side">
+                <div class="billboard-side-label">QUICK ACTIONS</div>
+                <div class="hero-action" id="hero-action-container">
+                    <!-- Rendered dynamically -->
+                </div>
+            </aside>
+        </section>
 
-                <!-- Schedule Management Panel -->
-                <div class="panel">
-                    <div class="panel-title">
-                        <span>排班表 (Schedule)</span>
-                        <span style="font-size: 0.85rem; font-weight: normal; color: var(--text-secondary);">
-                            點擊修改編輯該週人員
-                        </span>
-                    </div>
+        <!-- 佈告欄雙卡 -->
+        <div class="board-grid">
+            <!-- 排班表 -->
+            <section class="board-card">
+                <div class="board-card-head head-rota">
+                    <span class="board-card-title"><i class="fa-regular fa-calendar-days"></i> 排班表 ROTATION</span>
+                    <span class="board-card-hint">點「修改」編輯該週人員</span>
+                </div>
+                <div class="board-card-body">
                     <div class="schedule-list" id="schedule-container">
                         <!-- Dynamic content -->
                     </div>
                 </div>
-            </div>
+            </section>
 
-            <!-- Right Column: Members -->
-            <div class="right-column">
-                <!-- Member Management Panel -->
-                <div class="panel">
-                    <div class="panel-title">
-                        <span>成員管理 (Members)</span>
-                        <span class="badge badge-pending" id="member-count-badge">0 人</span>
-                    </div>
+            <!-- 成員 -->
+            <section class="board-card">
+                <div class="board-card-head head-crew">
+                    <span class="board-card-title"><i class="fa-solid fa-users"></i> 成員 CREW</span>
+                    <span class="badge badge-pending" id="member-count-badge">0 人</span>
+                </div>
+                <div class="board-card-body">
                     <div class="member-list" id="members-container">
                         <!-- Dynamic content -->
                     </div>
-                    <form class="add-member-form" id="add-member-form" style="display: flex; flex-direction: column; gap: 0.75rem; margin-top: 1.25rem;">
-                        <input type="text" class="form-control" id="new-member-name" placeholder="輸入成員姓名..." required max="10">
-                        <input type="email" class="form-control" id="new-member-email" placeholder="輸入 Teams Email (選填)...">
-                        <button type="submit" class="btn btn-primary" style="width: 100%;">
+                    <form class="add-member-form" id="add-member-form">
+                        <input type="text" class="form-control" id="new-member-name" placeholder="輸入成員姓名..." required maxlength="10" autocomplete="off">
+                        <input type="email" class="form-control" id="new-member-email" placeholder="輸入 Teams Email (選填)..." autocomplete="off">
+                        <button type="submit" class="btn btn-primary btn-block">
                             <i class="fa-solid fa-user-plus"></i> 新增成員
                         </button>
                     </form>
                 </div>
-            </div>
+            </section>
         </div>
-    </div>
+
+        <footer class="page-foot">
+            WHOCLEAN © 2026 — 一起維護整潔的環境 ✨
+        </footer>
+    </main>
 
     <!-- Modal for Editing Schedule/Cleaners -->
-    <div class="modal-overlay" id="edit-schedule-modal">
+    <div class="modal-overlay" id="edit-schedule-modal" role="dialog" aria-modal="true" aria-labelledby="modal-title-text">
         <div class="modal-content">
             <div class="modal-header">
                 <h3 class="modal-title" id="modal-title-text">修改值日生</h3>
-                <button class="modal-close" id="btn-close-modal">&times;</button>
+                <button class="modal-close" id="btn-close-modal" aria-label="關閉視窗">&times;</button>
             </div>
             <div class="modal-body">
-                <p style="color: var(--text-secondary); font-size: 0.9rem; margin-bottom: 1rem;" id="modal-week-range">
+                <p class="modal-hint" id="modal-week-range">
                     週數: 2026-W24 (06/08 ~ 06/14)
                 </p>
-                <div style="font-weight: 600; margin-bottom: 0.5rem;">選擇打掃人員 (可多選)：</div>
+                <div class="modal-field-label">選擇打掃人員 (可多選)：</div>
                 <div class="member-checkbox-list" id="modal-member-checkboxes">
                     <!-- Dynamic check list -->
                 </div>
@@ -121,46 +136,37 @@
     </div>
 
     <!-- Modal for Microsoft Login & Teams Settings -->
-    <div class="modal-overlay" id="ms-settings-modal">
+    <div class="modal-overlay" id="ms-settings-modal" role="dialog" aria-modal="true" aria-labelledby="ms-settings-title">
         <div class="modal-content">
             <div class="modal-header">
-                <h3 class="modal-title">系統與整合設定</h3>
-                <button class="modal-close" id="btn-close-ms-modal">&times;</button>
+                <h3 class="modal-title" id="ms-settings-title">系統與整合設定</h3>
+                <button class="modal-close" id="btn-close-ms-modal" aria-label="關閉視窗">&times;</button>
             </div>
             <div class="modal-body">
                 <!-- Teams Webhook -->
-                <div style="margin-bottom: 1.25rem;">
-                    <label style="font-weight: 600; display: block; margin-bottom: 0.5rem; color: #8f92d1;">
-                        <i class="fa-brands fa-microsoft-teams"></i> Teams 公用頻道 Webhook URL:
+                <div class="modal-section">
+                    <label class="form-label" for="teams-webhook-input">
+                        <i class="fa-solid fa-hashtag"></i> Teams 公用頻道 Webhook URL:
                     </label>
-                    <input type="text" class="form-control" id="teams-webhook-input" placeholder="貼上公用頻道的 Webhook URL...">
+                    <input type="url" class="form-control" id="teams-webhook-input" placeholder="貼上公用頻道的 Webhook URL...">
                 </div>
 
-                <div style="margin-bottom: 1.5rem;">
-                    <label style="font-weight: 600; display: block; margin-bottom: 0.5rem; color: #10b981;">
-                        <i class="fa-brands fa-microsoft-teams"></i> 我個人的 Teams Webhook URL (提醒自己):
+                <div class="modal-section">
+                    <label class="form-label" for="personal-teams-webhook-input">
+                        <i class="fa-regular fa-bell"></i> 我個人的 Teams Webhook URL (提醒自己):
                     </label>
-                    <input type="text" class="form-control" id="personal-teams-webhook-input" placeholder="貼上只提醒您個人的 Webhook URL...">
-                    <p style="color: var(--text-muted); font-size: 0.75rem; margin-top: 0.5rem; line-height: 1.4;">
+                    <input type="url" class="form-control" id="personal-teams-webhook-input" placeholder="貼上只提醒您個人的 Webhook URL...">
+                    <p class="modal-note">
                         ℹ️ 取得方式：在 Teams 的「工作流程」中，建立一個個人聊天通知的 Webhook，複製 URL 貼至此處，即可點擊「提醒我自己」發送通知給自己。
                     </p>
                 </div>
 
                 <!-- Microsoft Client ID -->
-                <div style="border-top: 1px solid var(--border-color); padding-top: 1.25rem; margin-bottom: 1.25rem;">
-                    <label style="font-weight: 600; display: block; margin-bottom: 0.5rem; color: #0078d4;">
+                <div class="modal-section bordered">
+                    <label class="form-label" for="ms-client-id-input">
                         <i class="fa-brands fa-microsoft"></i> Microsoft Client ID (登入用):
                     </label>
                     <input type="text" class="form-control" id="ms-client-id-input" placeholder="請貼上 Azure 註冊的 Client ID...">
-                </div>
-                
-                <div style="border-top: 1px solid var(--border-color); padding-top: 1.25rem; text-align: center;">
-                    <p style="color: var(--text-secondary); font-size: 0.85rem; margin-bottom: 0.75rem;">
-                        想先快速測試 Microsoft 登入介面嗎？
-                    </p>
-                    <button class="btn btn-secondary" id="btn-ms-demo-login" style="width: 100%;">
-                        <i class="fa-solid fa-wand-magic-sparkles"></i> 模擬 Microsoft 帳戶登入
-                    </button>
                 </div>
             </div>
             <div class="modal-footer">
@@ -171,73 +177,84 @@
     </div>
 
     <!-- Modal for Firebase Auth Login -->
-    <div class="modal-overlay" id="firebase-login-modal">
+    <div class="modal-overlay" id="firebase-login-modal" role="dialog" aria-modal="true" aria-labelledby="auth-modal-title">
         <div class="modal-content" style="max-width: 400px;">
             <div class="modal-header">
                 <h3 class="modal-title" id="auth-modal-title">帳戶登入</h3>
-                <button class="modal-close" id="btn-close-auth-modal">&times;</button>
+                <button class="modal-close" id="btn-close-auth-modal" aria-label="關閉視窗">&times;</button>
             </div>
             <div class="modal-body">
                 <!-- 1. Email/Password Auth Form -->
                 <div id="auth-email-section">
-                    <form id="email-auth-form" style="display: flex; flex-direction: column; gap: 0.75rem;">
+                    <form id="email-auth-form" class="form-stack">
                         <div id="reg-name-field" style="display: none;">
-                            <label style="font-size: 0.85rem; color: var(--text-secondary); text-align: left; display: block;">顯示名稱:</label>
-                            <input type="text" class="form-control" id="auth-display-name" placeholder="請輸入姓名...">
+                            <label class="form-label" for="auth-display-name">顯示名稱:</label>
+                            <input type="text" class="form-control" id="auth-display-name" placeholder="請輸入姓名..." maxlength="20">
                         </div>
                         <div>
-                            <label style="font-size: 0.85rem; color: var(--text-secondary); text-align: left; display: block;">電子信箱:</label>
+                            <label class="form-label" for="auth-email">電子信箱:</label>
                             <input type="email" class="form-control" id="auth-email" placeholder="example@mail.com" autocomplete="username" required>
                         </div>
                         <div>
-                            <label style="font-size: 0.85rem; color: var(--text-secondary); text-align: left; display: block;">密碼:</label>
-                            <input type="password" class="form-control" id="auth-password" placeholder="至少 6 位字元..." autocomplete="current-password" required>
+                            <label class="form-label" for="auth-password">密碼:</label>
+                            <input type="password" class="form-control" id="auth-password" placeholder="至少 6 位字元..." autocomplete="current-password" minlength="6" required>
                         </div>
-                        <button type="submit" class="btn btn-primary" id="btn-email-submit" style="width: 100%; margin-top: 0.5rem;">登入</button>
+                        <button type="submit" class="btn btn-primary btn-block" id="btn-email-submit" style="margin-top: 0.5rem;">登入</button>
                     </form>
-                    <div style="text-align: center; margin-top: 1rem;">
-                        <span id="auth-toggle-msg" style="font-size: 0.85rem; color: var(--text-secondary);">還沒有帳號嗎？</span>
-                        <a href="#" id="link-toggle-register" style="color: var(--accent); font-size: 0.85rem; font-weight: 600; text-decoration: none;">立即註冊</a>
+                    <div class="auth-toggle-row">
+                        <span id="auth-toggle-msg">還沒有帳號嗎？</span>
+                        <a href="#" id="link-toggle-register">立即註冊</a>
                     </div>
                 </div>
 
                 <!-- Divider -->
-                <div style="display: flex; align-items: center; text-align: center; margin: 1.5rem 0; color: var(--text-muted); font-size: 0.8rem;">
-                    <div style="flex: 1; border-bottom: 1px solid var(--border-color);"></div>
-                    <span style="padding: 0 0.75rem;">或其他方式</span>
-                    <div style="flex: 1; border-bottom: 1px solid var(--border-color);"></div>
-                </div>
+                <div class="divider"><span>或其他方式</span></div>
 
                 <!-- Social Logins (Google) -->
-                <button class="btn btn-secondary" id="btn-google-login" style="width: 100%; background: #ffffff; color: #1f1f1f; display: flex; align-items: center; justify-content: center; gap: 0.5rem; font-weight: 600; border: 1px solid #dadce0; cursor: pointer;">
+                <button class="btn btn-google btn-block" id="btn-google-login">
                     <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" width="18" height="18" alt="Google">
                     使用 Google 帳戶登入
                 </button>
             </div>
             <div class="modal-footer" style="justify-content: center; padding: 0; margin-top: 0.75rem;">
-                <button class="btn btn-secondary" id="btn-cancel-auth-modal" style="width: 100%;">取消</button>
+                <button class="btn btn-secondary btn-block" id="btn-cancel-auth-modal">取消</button>
             </div>
         </div>
     </div>
 
     <!-- Modal for Editing Member -->
-    <div class="modal-overlay" id="edit-member-modal">
+    <div class="modal-overlay" id="edit-member-modal" role="dialog" aria-modal="true" aria-labelledby="edit-member-title">
         <div class="modal-content" style="max-width: 400px;">
             <div class="modal-header">
-                <h3 class="modal-title">編輯成員資訊</h3>
-                <button class="modal-close" id="btn-close-edit-member-modal">&times;</button>
+                <h3 class="modal-title" id="edit-member-title">編輯成員資訊</h3>
+                <button class="modal-close" id="btn-close-edit-member-modal" aria-label="關閉視窗">&times;</button>
             </div>
             <div class="modal-body" style="text-align: left;">
+                <div class="avatar-edit-row">
+                    <div class="avatar" id="edit-member-avatar-preview">?</div>
+                    <div class="avatar-edit-actions">
+                        <div class="avatar-edit-buttons">
+                            <input type="file" id="edit-member-avatar-input" accept="image/*" hidden>
+                            <button type="button" class="btn btn-secondary btn-sm" id="btn-upload-avatar">
+                                <i class="fa-regular fa-image"></i> 上傳圖片
+                            </button>
+                            <button type="button" class="btn btn-secondary btn-sm" id="btn-remove-avatar">
+                                <i class="fa-regular fa-trash-can"></i> 移除
+                            </button>
+                        </div>
+                        <p class="avatar-edit-note">支援 JPG / PNG，將自動置中裁切並壓縮成圓形頭像；未上傳時顯示姓名第一個字。</p>
+                    </div>
+                </div>
                 <div style="margin-bottom: 0.75rem;">
-                    <label style="font-size: 0.85rem; color: var(--text-secondary); text-align: left; display: block;">姓名:</label>
-                    <input type="text" class="form-control" id="edit-member-name" required max="10">
+                    <label class="form-label" for="edit-member-name">姓名:</label>
+                    <input type="text" class="form-control" id="edit-member-name" required maxlength="10">
                 </div>
                 <div>
-                    <label style="font-size: 0.85rem; color: var(--text-secondary); text-align: left; display: block;">Teams Email (選填):</label>
+                    <label class="form-label" for="edit-member-email">Teams Email (選填):</label>
                     <input type="email" class="form-control" id="edit-member-email">
                 </div>
-                <div style="margin-top: 1.25rem; display: flex; align-items: center; justify-content: space-between; background: rgba(255, 255, 255, 0.02); padding: 0.75rem 1rem; border-radius: var(--radius-md); border: 1px solid rgba(255, 255, 255, 0.05);">
-                    <span style="font-size: 0.9rem; color: var(--text-secondary); user-select: none;">啟用此成員 (參與值日生輪替)</span>
+                <div class="toggle-row">
+                    <span class="toggle-row-label">啟用此成員 (參與值日生輪替)</span>
                     <label class="switch">
                         <input type="checkbox" id="edit-member-active">
                         <span class="slider"></span>
@@ -251,7 +268,10 @@
         </div>
     </div>
 
+    <!-- Toast 通知容器 -->
+    <div class="toast-container" id="toast-container" aria-live="polite"></div>
+
     <!-- Application Script entry point -->
-    <script type="module" src="js/app.js"></script>
+    <script type="module" src="js/app.js?v=20260611"></script>
 </body>
 </html>

@@ -3,11 +3,12 @@ import { renderAll, setupEventListeners } from './ui.js';
 import { initTeamsSdk, initFirebaseAuth } from './auth.js';
 
 async function init() {
-    // 0. 讀取 config.json 來載入 Firebase Auth
+    // 0. 讀取 config.json (只 fetch 一次，供 Auth 與 Storage 共用)
+    let config = null;
     try {
         const response = await fetch('./config.json');
         if (response.ok) {
-            const config = await response.json();
+            config = await response.json();
             if (config.firebaseConfig) {
                 await initFirebaseAuth(config.firebaseConfig);
             }
@@ -16,8 +17,8 @@ async function init() {
         console.error("載入 Firebase Auth Config 失敗:", e);
     }
 
-    // 1. 初始化資料庫
-    await initStorage();
+    // 1. 初始化資料庫 (傳入 config 以啟用 Firestore 雲端同步)
+    await initStorage(config);
     
     // 2. 嘗試初始化 Teams SDK 並自動取得身分 (無感登入)
     await initTeamsSdk();

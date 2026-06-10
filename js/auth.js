@@ -4,7 +4,6 @@
 
 const STORAGE_KEYS = {
     CLIENT_ID: 'whoclean_ms_client_id',
-    DEMO_USER: 'whoclean_demo_user',
 };
 
 // 取得儲存的 Client ID
@@ -15,21 +14,6 @@ export function getMicrosoftClientId() {
 // 儲存 Client ID
 export function saveMicrosoftClientId(clientId) {
     localStorage.setItem(STORAGE_KEYS.CLIENT_ID, clientId.trim());
-}
-
-// 取得模擬登入的使用者資訊
-export function getDemoUser() {
-    const userStr = localStorage.getItem(STORAGE_KEYS.DEMO_USER);
-    return userStr ? JSON.parse(userStr) : null;
-}
-
-// 儲存模擬登入的使用者資訊
-export function saveDemoUser(user) {
-    if (user) {
-        localStorage.setItem(STORAGE_KEYS.DEMO_USER, JSON.stringify(user));
-    } else {
-        localStorage.removeItem(STORAGE_KEYS.DEMO_USER);
-    }
 }
 
 // 初始化 MSAL 實例
@@ -160,19 +144,9 @@ export async function getCurrentUser() {
             return {
                 name: accounts[0].name || accounts[0].username,
                 email: accounts[0].username,
-                avatar: accounts[0].name ? accounts[0].name.substring(0, 2) : 'MS',
-                isDemo: false
+                avatar: accounts[0].name ? accounts[0].name.substring(0, 2) : 'MS'
             };
         }
-    }
-
-    // 3. 再其次檢查模擬登入
-    const demoUser = getDemoUser();
-    if (demoUser) {
-        return {
-            ...demoUser,
-            isDemo: true
-        };
     }
 
     return null;
@@ -229,8 +203,7 @@ export async function login() {
             user: {
                 name: loginResponse.account.name || loginResponse.account.username,
                 email: loginResponse.account.username,
-                avatar: loginResponse.account.name ? loginResponse.account.name.substring(0, 2) : 'MS',
-                isDemo: false
+                avatar: loginResponse.account.name ? loginResponse.account.name.substring(0, 2) : 'MS'
             }
         };
     } catch (error) {
@@ -245,12 +218,6 @@ export async function logout() {
     if (firebaseAuth && firebaseAuth.currentUser) {
         const { signOut } = await import('https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js');
         await signOut(firebaseAuth);
-    }
-
-    const demoUser = getDemoUser();
-    if (demoUser) {
-        saveDemoUser(null);
-        return true;
     }
 
     const instance = await getMsalInstance();

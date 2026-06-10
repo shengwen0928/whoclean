@@ -78,51 +78,122 @@ $diff = Get-WeekDiff $anchor.weekKey $currentWeekKey
 $cleanerIdx = (($anchorIdx + $diff) % $members.Count + $members.Count) % $members.Count
 $cleanerName = $members[$cleanerIdx]
 
-# 3. 建立 Teams Adaptive Card JSON
-$bodyPayload = [ordered]@{
+# 3. 建立 Teams Adaptive Card JSON (精緻版卡片)
+$adaptiveCard = [ordered]@{
     type = "AdaptiveCard"
     version = "1.4"
+    msteams = @{ width = "Full" }
     body = @(
         [ordered]@{
             type = "Container"
             style = "accent"
             bleed = $true
             items = @(
-                @{
-                    type = "TextBlock"
-                    text = "🧹 WhoClean 本週值日生提醒 (Windows 自動發送)"
-                    weight = "Bolder"
-                    size = "Large"
-                    color = "Accent"
+                [ordered]@{
+                    type = "ColumnSet"
+                    columns = @(
+                        [ordered]@{
+                            type = "Column"
+                            width = "auto"
+                            verticalContentAlignment = "Center"
+                            items = @(
+                                @{ type = "TextBlock"; text = "🧹"; size = "ExtraLarge" }
+                            )
+                        },
+                        [ordered]@{
+                            type = "Column"
+                            width = "stretch"
+                            verticalContentAlignment = "Center"
+                            items = @(
+                                [ordered]@{
+                                    type = "TextBlock"
+                                    text = "新的一週開始！本週值日生提醒"
+                                    weight = "Bolder"
+                                    size = "Large"
+                                    color = "Accent"
+                                },
+                                [ordered]@{
+                                    type = "TextBlock"
+                                    text = "WhoClean · 每週一 08:00 自動排程通知"
+                                    isSubtle = $true
+                                    size = "Small"
+                                    spacing = "None"
+                                }
+                            )
+                        }
+                    )
                 }
             )
         },
         [ordered]@{
-            type = "FactSet"
+            type = "Container"
             spacing = "Medium"
-            facts = @(
-                @{
-                    title = "本週值日生:"
-                    value = $cleanerName
+            items = @(
+                [ordered]@{
+                    type = "TextBlock"
+                    text = "本週值日生"
+                    size = "Small"
+                    isSubtle = $true
+                    weight = "Bolder"
                 },
-                @{
-                    title = "值日區間:"
-                    value = $dateRange
+                [ordered]@{
+                    type = "TextBlock"
+                    text = $cleanerName
+                    size = "ExtraLarge"
+                    weight = "Bolder"
+                    color = "Accent"
+                    spacing = "Small"
+                    wrap = $true
                 }
             )
         },
-        @{
+        [ordered]@{
+            type = "ColumnSet"
+            spacing = "Medium"
+            separator = $true
+            columns = @(
+                [ordered]@{
+                    type = "Column"
+                    width = 1
+                    items = @(
+                        @{ type = "TextBlock"; text = "📅 週數"; size = "Small"; isSubtle = $true },
+                        @{ type = "TextBlock"; text = $currentWeekKey; weight = "Bolder"; spacing = "None" }
+                    )
+                },
+                [ordered]@{
+                    type = "Column"
+                    width = 1
+                    items = @(
+                        @{ type = "TextBlock"; text = "🗓️ 值日區間"; size = "Small"; isSubtle = $true },
+                        @{ type = "TextBlock"; text = $dateRange; weight = "Bolder"; spacing = "None" }
+                    )
+                }
+            )
+        },
+        [ordered]@{
             type = "TextBlock"
-            text = "新的一週開始囉！請值日生記得撥空打掃，維護環境整潔！"
+            text = "請值日生記得撥空打掃，大家一起維護環境整潔！💪"
             wrap = $true
             isSubtle = $true
             spacing = "Medium"
+            separator = $true
         }
     )
-    `$schema = "http://adaptivecards.io/schemas/adaptive-card.json"
+    '$schema' = "http://adaptivecards.io/schemas/adaptive-card.json"
 }
 
-$jsonPayload = $bodyPayload | ConvertTo-Json -Depth 10 -Compress
+# Power Automate「工作流程」Webhook 需要 attachments 信封格式
+$bodyPayload = [ordered]@{
+    type = "message"
+    attachments = @(
+        [ordered]@{
+            contentType = "application/vnd.microsoft.card.adaptive"
+            content = $adaptiveCard
+        }
+    )
+}
+
+$jsonPayload = $bodyPayload | ConvertTo-Json -Depth 20 -Compress
 
 # 4. 發送至 Teams Webhook
 try {

@@ -1,6 +1,6 @@
 import { getMembers, getSchedule, addMember, removeMember, updateWeekCleaner, moveMemberUp, moveMemberDown, getTeamsWebhookUrl, saveTeamsWebhookUrl, getPersonalTeamsWebhookUrl, savePersonalTeamsWebhookUrl, saveMembers } from './storage.js';
-import { getYearWeekString, getWeekRangeText, downloadIcsFile } from './utils.js';
-import { getMicrosoftClientId, saveMicrosoftClientId, getCurrentUser, login, logout, saveDemoUser, registerWithEmail, loginWithEmail, loginWithGoogle } from './auth.js';
+import { getYearWeekString, getWeekRangeText, escapeHtml } from './utils.js';
+import { getMicrosoftClientId, saveMicrosoftClientId, getCurrentUser, login, logout, registerWithEmail, loginWithEmail, loginWithGoogle } from './auth.js';
 
 // DOM 元素快取
 const elements = {
@@ -37,7 +37,6 @@ const elements = {
     btnCloseMsModal: document.getElementById('btn-close-ms-modal'),
     btnCancelMsModal: document.getElementById('btn-cancel-ms-modal'),
     btnSaveMsSettings: document.getElementById('btn-save-ms-settings'),
-    btnMsDemoLogin: document.getElementById('btn-ms-demo-login'),
     
     // Firebase Auth Modal Elements
     authModal: document.getElementById('firebase-login-modal'),
@@ -63,15 +62,110 @@ const elements = {
     editMemberEmail: document.getElementById('edit-member-email'),
     btnSaveEditMember: document.getElementById('btn-save-edit-member'),
     editMemberActive: document.getElementById('edit-member-active'),
+
+    // 頭像編輯相關
+    editMemberAvatarPreview: document.getElementById('edit-member-avatar-preview'),
+    editMemberAvatarInput: document.getElementById('edit-member-avatar-input'),
+    btnUploadAvatar: document.getElementById('btn-upload-avatar'),
+    btnRemoveAvatar: document.getElementById('btn-remove-avatar'),
 };
 
 let activeEditingWeekKey = null;
 let draggedMemberId = null;
 let activeEditingMemberId = null;
+// 編輯成員視窗中的頭像變更狀態：undefined = 未變更, null = 移除, string = 新圖片 dataURL
+let pendingAvatarImage = undefined;
 
-// 取得頭像縮寫文字
+// 取得頭像文字 (姓名第一個字)
 function getAvatarText(name) {
-    return name ? name.substring(0, 2) : '?';
+    return name ? Array.from(name)[0] : '?';
+}
+
+// 產生頭像 HTML：有自訂圖片用圖片，否則用顏色 + 姓名第一個字
+function avatarHtml(member, extraClass = '') {
+    if (member && member.avatarImage) {
+        return `<div class="avatar ${extraClass} has-img" style="background-image: url('${member.avatarImage}')" title="${escapeHtml(member.name)}">${escapeHtml(getAvatarText(member.name))}</div>`;
+    }
+    const bg = member ? member.color : '#C3C8D8';
+    const text = member ? getAvatarText(member.name) : '?';
+    return `<div class="avatar ${extraClass}" style="background: ${bg}" title="${member ? escapeHtml(member.name) : ''}">${escapeHtml(text)}</div>`;
+}
+
+// 將頭像套用至既有元素 (Hero 大頭貼)
+function applyAvatarToElement(el, member) {
+    if (member && member.avatarImage) {
+        el.innerText = '';
+        el.classList.add('has-img');
+        el.style.background = `url('${member.avatarImage}') center / cover no-repeat`;
+    } else {
+        el.classList.remove('has-img');
+        el.style.background = member ? member.color : '#C3C8D8';
+        el.innerText = member ? getAvatarText(member.name) : '?';
+    }
+}
+
+/**
+ * 將使用者選擇的圖片置中裁切並壓縮為正方形 dataURL
+ * @param {File} file - 圖片檔案
+ * @param {number} size - 輸出尺寸 (px)
+ * @returns {Promise<string>} JPEG dataURL
+ */
+function resizeImageToDataUrl(file, size = 128) {
+    return new Promise((resolve, reject) => {
+        const objectUrl = URL.createObjectURL(file);
+        const img = new Image();
+        img.onload = () => {
+            try {
+                const canvas = document.createElement('canvas');
+                canvas.width = size;
+                canvas.height = size;
+                const ctx = canvas.getContext('2d');
+                const s = Math.min(img.width, img.height);
+                ctx.drawImage(img, (img.width - s) / 2, (img.height - s) / 2, s, s, 0, 0, size, size);
+                resolve(canvas.toDataURL('image/jpeg', 0.85));
+            } catch (e) {
+                reject(e);
+            } finally {
+                URL.revokeObjectURL(objectUrl);
+            }
+        };
+        img.onerror = () => {
+            URL.revokeObjectURL(objectUrl);
+            reject(new Error('圖片載入失敗'));
+        };
+        img.src = objectUrl;
+    });
+}
+
+/**
+ * Toast 通知 — 取代干擾性的 alert()
+ * @param {string} message - 訊息文字
+ * @param {'success'|'error'|'info'|'warning'} type - 通知類型
+ * @param {number} duration - 顯示毫秒數
+ */
+export function showToast(message, type = 'info', duration = 3500) {
+    const container = document.getElementById('toast-container');
+    if (!container) return;
+
+    const icons = {
+        success: 'fa-solid fa-circle-check',
+        error: 'fa-solid fa-circle-xmark',
+        warning: 'fa-solid fa-triangle-exclamation',
+        info: 'fa-solid fa-circle-info',
+    };
+
+    const toast = document.createElement('div');
+    toast.className = `toast toast-${type}`;
+    toast.setAttribute('role', 'status');
+    toast.innerHTML = `<i class="${icons[type] || icons.info}"></i><span>${escapeHtml(message)}</span>`;
+    container.appendChild(toast);
+
+    setTimeout(() => {
+        toast.classList.add('leaving');
+        toast.addEventListener('animationend', () => toast.remove(), { once: true });
+        // 動效被停用 (prefers-reduced-motion) 時的保險移除
+        setTimeout(() => toast.remove(), 600);
+    }, duration);
 }
 
 // 渲染登入狀態
@@ -80,25 +174,23 @@ export async function renderAuthStatus() {
     const container = elements.authStatusContainer;
     
     if (user) {
-        const avatarBg = user.isFirebase 
-            ? 'linear-gradient(135deg, #f5820d 0%, #e65100 100%)' 
+        const avatarBg = user.isFirebase
+            ? 'linear-gradient(135deg, #f5820d 0%, #e65100 100%)'
             : 'linear-gradient(135deg, #0072ff 0%, #00c6ff 100%)';
         const displaySubText = user.email || user.phoneNumber || '';
         container.innerHTML = `
-            <div style="display: flex; align-items: center; gap: 0.75rem; background: rgba(255, 255, 255, 0.05); border: 1px solid var(--border-color); padding: 0.35rem 0.85rem; border-radius: var(--radius-md);">
-                <div class="avatar" style="background: ${avatarBg}; width: 28px; height: 28px; font-size: 0.75rem;">${user.avatar}</div>
-                <div style="text-align: left; max-width: 120px;">
-                    <div style="font-size: 0.85rem; font-weight: 600; line-height: 1.2; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${user.name}</div>
-                    <div style="font-size: 0.7rem; color: var(--text-secondary); line-height: 1.2; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
-                        ${displaySubText} ${user.isDemo ? '<span style="color: var(--warning); font-size: 0.65rem;">(模擬)</span>' : ''}
-                    </div>
+            <div class="user-chip">
+                <div class="avatar sm" style="background: ${avatarBg};">${escapeHtml(getAvatarText(user.name))}</div>
+                <div class="user-chip-info">
+                    <div class="user-chip-name">${escapeHtml(user.name)}</div>
+                    <div class="user-chip-sub">${escapeHtml(displaySubText)}</div>
                 </div>
-                <button class="btn-icon danger" id="btn-ms-logout" title="登出" style="width: 24px; height: 24px; border: none; background: transparent; color: var(--text-secondary); display: flex; align-items: center; justify-content: center; cursor: pointer;">
-                    <i class="fa-solid fa-right-from-bracket" style="font-size: 0.8rem;"></i>
+                <button class="btn-logout" id="btn-ms-logout" title="登出" aria-label="登出">
+                    <i class="fa-solid fa-right-from-bracket"></i>
                 </button>
             </div>
         `;
-        
+
         document.getElementById('btn-ms-logout').addEventListener('click', async () => {
             await logout();
             renderAll();
@@ -106,10 +198,10 @@ export async function renderAuthStatus() {
     } else {
         container.innerHTML = `
             <div style="display: flex; gap: 0.5rem;">
-                <button class="btn btn-primary" id="btn-firebase-login" style="padding: 0.5rem 1rem; font-size: 0.85rem; background: linear-gradient(135deg, #f5820d 0%, #e65100 100%); border: none;">
+                <button class="btn btn-primary btn-sm" id="btn-firebase-login">
                     <i class="fa-solid fa-user-shield"></i> 登入 / 註冊
                 </button>
-                <button class="btn btn-secondary" id="btn-ms-login" style="padding: 0.5rem 0.75rem; font-size: 0.85rem; background: rgba(255,255,255,0.05); color: var(--text-secondary); border-color: var(--border-color);" title="Microsoft 登入">
+                <button class="btn btn-secondary btn-sm" id="btn-ms-login" title="Microsoft 登入" aria-label="Microsoft 登入">
                     <i class="fa-brands fa-microsoft"></i>
                 </button>
             </div>
@@ -143,6 +235,12 @@ export function openEditMemberModal(memberId) {
         elements.editMemberName.value = member.name;
         elements.editMemberEmail.value = member.email || '';
         elements.editMemberActive.checked = member.active !== false;
+
+        // 頭像預覽：重設變更狀態並顯示現有頭像
+        pendingAvatarImage = undefined;
+        elements.editMemberAvatarInput.value = '';
+        applyAvatarToElement(elements.editMemberAvatarPreview, member);
+
         elements.editMemberModal.classList.add('active');
     }
 }
@@ -150,6 +248,7 @@ export function openEditMemberModal(memberId) {
 export function closeEditMemberModal() {
     elements.editMemberModal.classList.remove('active');
     activeEditingMemberId = null;
+    pendingAvatarImage = undefined;
 }
 
 export function openMsSettingsModal() {
@@ -163,8 +262,31 @@ export function closeMsSettingsModal() {
     elements.msSettingsModal.classList.remove('active');
 }
 
+// 渲染本週五日方塊 (週一 ~ 週五)
+function renderWeekProgress() {
+    const container = document.getElementById('hero-progress');
+    if (!container) return;
+
+    const now = new Date();
+    const dayIdx = (now.getDay() + 6) % 7; // 週一=0 ... 週日=6
+    const labels = ['週一', '週二', '週三', '週四', '週五'];
+
+    const blocks = labels.map((label, i) => {
+        let cls = 'day-block';
+        let tag = '';
+        if (i < dayIdx) cls += ' done';
+        if (i === dayIdx) { cls += ' today'; tag = '<em>今天</em>'; }
+        return `<div class="${cls}"><span>${label}</span>${tag}</div>`;
+    }).join('');
+
+    const weekendNote = dayIdx > 4 ? '<div class="day-blocks-note">本週打掃結束，週末愉快！🎉</div>' : '';
+
+    container.innerHTML = `<div class="day-blocks">${blocks}</div>${weekendNote}`;
+}
+
 // 渲染本週主卡片
 export function renderHero() {
+    renderWeekProgress();
     const today = new Date();
     const currentWeekKey = getYearWeekString(today);
     const schedule = getSchedule();
@@ -174,13 +296,12 @@ export function renderHero() {
     
     // 若本週沒有排班，點擊快速生成
     if (!currentDuty) {
-        elements.heroAvatar.innerText = '?';
-        elements.heroAvatar.style.background = 'rgba(255, 255, 255, 0.05)';
+        applyAvatarToElement(elements.heroAvatar, null);
         elements.heroCleaners.innerHTML = `<span class="hero-cleaner-name" style="color: var(--text-muted)">本週尚未安排值日生</span>`;
         elements.heroWeek.innerHTML = `<i class="fa-regular fa-calendar"></i> ${currentWeekKey}`;
         elements.heroDate.innerHTML = `<i class="fa-solid fa-clock"></i> ${getWeekRangeText(currentWeekKey)}`;
         elements.heroActionContainer.innerHTML = `
-            <button class="btn btn-primary" id="btn-edit-current" style="width: 100%;">
+            <button class="btn btn-primary btn-block" id="btn-edit-current">
                 <i class="fa-solid fa-user-pen"></i> 安排值日生
             </button>
         `;
@@ -192,18 +313,16 @@ export function renderHero() {
     const activeCleaners = currentDuty.cleanerIds.map(cid => members.find(m => m.id === cid)).filter(Boolean);
 
     if (activeCleaners.length === 0) {
-        elements.heroAvatar.innerText = '?';
-        elements.heroAvatar.style.background = 'rgba(255, 255, 255, 0.05)';
+        applyAvatarToElement(elements.heroAvatar, null);
         elements.heroCleaners.innerHTML = `<span class="hero-cleaner-name" style="color: var(--text-muted)">尚未指派人員</span>`;
     } else {
-        // 設定大頭貼
-        elements.heroAvatar.innerText = getAvatarText(activeCleaners[0].name);
-        elements.heroAvatar.style.background = activeCleaners[0].color;
+        // 設定大頭貼 (支援自訂圖片)
+        applyAvatarToElement(elements.heroAvatar, activeCleaners[0]);
         
-        // 渲染名字
-        elements.heroCleaners.innerHTML = activeCleaners.map(ac => 
-            `<span class="hero-cleaner-name" style="background: ${ac.color}; -webkit-background-clip: text; -webkit-text-fill-color: transparent;">${ac.name}</span>`
-        ).join(' <span style="color: var(--text-muted); font-size: 1.5rem; margin: 0 0.25rem;">&</span> ');
+        // 渲染名字 (螢光筆 highlight 效果)
+        elements.heroCleaners.innerHTML = activeCleaners.map(ac =>
+            `<span class="hero-cleaner-name">${escapeHtml(ac.name)}</span>`
+        ).join(' <span class="hero-cleaner-sep">&amp;</span> ');
     }
 
     elements.heroWeek.innerHTML = `<i class="fa-regular fa-calendar"></i> ${currentDuty.weekKey}`;
@@ -214,11 +333,8 @@ export function renderHero() {
         <button class="btn btn-primary" id="btn-edit-current">
             <i class="fa-solid fa-user-pen"></i> 修改人員
         </button>
-        <button class="btn btn-secondary" id="btn-hero-ics" style="background: rgba(255, 255, 255, 0.05); color: var(--text-primary); border-color: var(--border-color);">
-            <i class="fa-regular fa-calendar-plus"></i> 加至我的行事曆
-        </button>
-        <button class="btn btn-secondary" id="btn-send-teams" style="background: rgba(98, 100, 167, 0.15); color: #8f92d1; border-color: rgba(98, 100, 167, 0.3);">
-            <i class="fa-brands fa-microsoft-teams"></i> 頻道通知
+        <button class="btn btn-teams" id="btn-send-teams">
+            <i class="fa-solid fa-paper-plane"></i> 頻道通知
         </button>
     `;
 
@@ -226,21 +342,9 @@ export function renderHero() {
     const personalWebhook = getPersonalTeamsWebhookUrl();
     if (personalWebhook) {
         buttonsHtml += `
-            <button class="btn btn-secondary" id="btn-send-personal-teams" style="background: rgba(16, 185, 129, 0.15); color: #34d399; border-color: rgba(16, 185, 129, 0.3);">
-                <i class="fa-brands fa-microsoft-teams"></i> 提醒我自己
+            <button class="btn btn-secondary" id="btn-send-personal-teams">
+                <i class="fa-regular fa-bell"></i> 提醒我自己
             </button>
-        `;
-    }
-
-    // 檢查本週值日生是否有設定 Email
-    const emails = activeCleaners.map(ac => ac.email).filter(Boolean);
-    if (emails.length > 0) {
-        const msgText = `🧹 哈囉，溫馨提醒：這週（${currentDuty.dateRange}）輪到您值日打掃囉！記得抽空清潔環境，十分感謝您！`;
-        const teamsDeepLink = `https://teams.microsoft.com/l/chat/0/0?users=${emails.join(',')}&message=${encodeURIComponent(msgText)}`;
-        buttonsHtml += `
-            <a class="btn btn-secondary" href="${teamsDeepLink}" target="_blank" style="background: rgba(0, 120, 212, 0.15); color: #5ca1e6; border-color: rgba(0, 120, 212, 0.3); text-decoration: none; text-align: center; display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem;">
-                <i class="fa-regular fa-comment-dots"></i> Teams 私訊提醒
-            </a>
         `;
     }
 
@@ -249,10 +353,6 @@ export function renderHero() {
     // 綁定動態生成的按鈕事件
     document.getElementById('btn-edit-current').onclick = () => openEditModal(currentWeekKey);
     document.getElementById('btn-send-teams').onclick = sendTeamsNotification;
-    document.getElementById('btn-hero-ics').onclick = () => {
-        const cleanerNames = activeCleaners.map(ac => ac.name).join(', ');
-        downloadIcsFile(currentWeekKey, cleanerNames);
-    };
     if (personalWebhook) {
         document.getElementById('btn-send-personal-teams').onclick = sendPersonalTeamsNotification;
     }
@@ -266,41 +366,37 @@ export function renderMembers() {
     elements.membersContainer.innerHTML = '';
     
     if (members.length === 0) {
-        elements.membersContainer.innerHTML = `<div style="text-align: center; color: var(--text-muted); padding: 1.5rem;">無成員，請於下方新增</div>`;
+        elements.membersContainer.innerHTML = `<div class="empty-state"><i class="fa-regular fa-face-smile"></i> 無成員，請於下方新增</div>`;
         return;
     }
 
     members.forEach((m, idx) => {
         const item = document.createElement('div');
-        item.className = 'member-item';
+        item.className = `member-item${m.active === false ? ' inactive' : ''}`;
         item.setAttribute('draggable', 'true');
         item.setAttribute('data-id', m.id);
-        
-        if (m.active === false) {
-            item.style.opacity = '0.55';
-        }
-        
+
         let emailHtml = '';
         if (m.email) {
-            emailHtml = `<div style="font-size: 0.75rem; color: var(--text-muted); max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${m.email}</div>`;
+            emailHtml = `<div class="member-email">${escapeHtml(m.email)}</div>`;
         }
 
-        const activeStatusHtml = m.active !== false ? '' : '<span style="color: var(--text-muted); font-size: 0.75rem; font-style: italic; margin-left: 0.4rem;">(已停用)</span>';
+        const activeStatusHtml = m.active !== false ? '' : '<span class="badge-muted" style="margin-left: 0.4rem;">(已停用)</span>';
 
         item.innerHTML = `
             <div class="member-profile">
-                <div class="avatar" style="background: ${m.color}">${getAvatarText(m.name)}</div>
+                ${avatarHtml(m)}
                 <div style="text-align: left;">
-                    <div class="member-name">${m.name}${activeStatusHtml}</div>
+                    <div class="member-name">${escapeHtml(m.name)}${activeStatusHtml}</div>
                     <div class="member-count">第 ${idx + 1} 順位</div>
                     ${emailHtml}
                 </div>
             </div>
-            <div style="display: flex; gap: 0.35rem; align-items: center;" class="member-actions-wrapper">
-                <button class="btn-icon edit-member-btn" data-id="${m.id}" title="修改成員資訊" style="cursor: pointer;">
+            <div class="member-actions-wrapper">
+                <button class="btn-icon edit-member-btn" data-id="${m.id}" title="修改成員資訊" aria-label="修改成員資訊">
                     <i class="fa-regular fa-pen-to-square"></i>
                 </button>
-                <button class="btn-icon danger delete-member-btn" data-id="${m.id}" title="刪除成員" style="cursor: pointer;">
+                <button class="btn-icon danger delete-member-btn" data-id="${m.id}" title="刪除成員" aria-label="刪除成員">
                     <i class="fa-regular fa-trash-can"></i>
                 </button>
             </div>
@@ -386,6 +482,7 @@ export function renderMembers() {
             if (confirm(`確定要刪除成員「${memberName}」嗎？`)) {
                 removeMember(id);
                 renderAll();
+                showToast(`已刪除成員「${memberName}」`, 'info');
             }
         });
 
@@ -403,7 +500,7 @@ export function renderSchedule() {
     elements.scheduleContainer.innerHTML = '';
     
     if (schedule.length === 0) {
-        elements.scheduleContainer.innerHTML = `<div style="text-align: center; color: var(--text-muted); padding: 1.5rem;">無排班資料</div>`;
+        elements.scheduleContainer.innerHTML = `<div class="empty-state"><i class="fa-regular fa-calendar-xmark"></i> 無排班資料，請先新增成員</div>`;
         return;
     }
 
@@ -420,45 +517,38 @@ export function renderSchedule() {
         // 頭像重疊區域
         let avatarsHtml = '';
         if (activeCleaners.length === 0) {
-            avatarsHtml = `<div class="avatar" style="background: rgba(255,255,255,0.05); font-size: 0.8rem;">?</div>`;
+            avatarsHtml = `<div class="avatar md" style="background: #A39B89;">?</div>`;
         } else {
             avatarsHtml = `
                 <div class="cleaners-avatars">
-                    ${activeCleaners.map(ac => `<div class="avatar" style="background: ${ac.color}; width: 32px; height: 32px; font-size: 0.8rem;" title="${ac.name}">${getAvatarText(ac.name)}</div>`).join('')}
+                    ${activeCleaners.map(ac => avatarHtml(ac, 'md')).join('')}
                 </div>
             `;
         }
 
         item.innerHTML = `
+            <div class="rota-num">W${s.weekKey.split('-W')[1] || '--'}</div>
             <div class="schedule-info">
                 <div class="schedule-week">
-                    ${s.weekKey} ${isCurrent ? '<span style="color: var(--accent); font-size: 0.8rem; font-weight: 800;">[本週]</span>' : ''}
+                    ${s.weekKey} ${isCurrent ? '<span class="current-tag">本週</span>' : ''}
                 </div>
                 <div class="schedule-date">${s.dateRange}</div>
             </div>
             <div class="schedule-cleaners-list">
                 ${avatarsHtml}
-                <div style="font-size: 0.9rem; font-weight: 500;">
-                    ${activeCleaners.length > 0 ? activeCleaners.map(ac => ac.name).join(', ') : '<span style="color: var(--text-muted)">未安排</span>'}
+                <div class="schedule-cleaner-names">
+                    ${activeCleaners.length > 0 ? escapeHtml(activeCleaners.map(ac => ac.name).join(', ')) : '<span class="text-muted">未安排</span>'}
                 </div>
             </div>
             <div class="schedule-actions">
-                <button class="btn btn-secondary btn-edit-week" data-week="${s.weekKey}" style="padding: 0.4rem 0.8rem; font-size: 0.8rem;">
+                <button class="btn btn-secondary btn-sm btn-edit-week" data-week="${s.weekKey}">
                     <i class="fa-regular fa-pen-to-square"></i> 修改
-                </button>
-                <button class="btn btn-secondary btn-ics-week" data-week="${s.weekKey}" style="padding: 0.4rem 0.6rem; font-size: 0.8rem; margin-left: 0.25rem;" title="下載行事曆提醒 (.ics)">
-                    <i class="fa-regular fa-calendar-plus"></i>
                 </button>
             </div>
         `;
 
         item.querySelector('.btn-edit-week').addEventListener('click', () => {
             openEditModal(s.weekKey);
-        });
-
-        item.querySelector('.btn-ics-week').addEventListener('click', () => {
-            const cleanerNames = activeCleaners.map(ac => ac.name).join(', ');
-            downloadIcsFile(s.weekKey, cleanerNames);
         });
 
         elements.scheduleContainer.appendChild(item);
@@ -496,8 +586,8 @@ export function openEditModal(weekKey) {
         label.innerHTML = `
             <input type="checkbox" value="${m.id}" ${isChecked ? 'checked' : ''}>
             <span class="custom-checkbox"></span>
-            <div class="avatar" style="background: ${m.color}; width: 28px; height: 28px; font-size: 0.75rem;">${getAvatarText(m.name)}</div>
-            <span>${m.name}</span>
+            ${avatarHtml(m, 'sm')}
+            <span>${escapeHtml(m.name)}</span>
         `;
         elements.modalCheckboxes.appendChild(label);
     });
@@ -553,16 +643,16 @@ export function setupEventListeners() {
         try {
             if (isRegisterMode) {
                 await registerWithEmail(email, password, displayName);
-                alert('註冊成功！');
+                showToast('註冊成功！歡迎加入 WhoClean。', 'success');
             } else {
                 await loginWithEmail(email, password);
-                alert('登入成功！');
+                showToast('登入成功！', 'success');
             }
             closeAuthModal();
             renderAll();
         } catch (err) {
             console.error(err);
-            alert(`驗證失敗: ${err.message}`);
+            showToast(`驗證失敗: ${err.message}`, 'error');
         }
     });
 
@@ -570,12 +660,12 @@ export function setupEventListeners() {
     elements.btnGoogleLogin.addEventListener('click', async () => {
         try {
             await loginWithGoogle();
-            alert('Google 登入成功！');
+            showToast('Google 登入成功！', 'success');
             closeAuthModal();
             renderAll();
         } catch (err) {
             console.error(err);
-            alert(`Google 登入失敗: ${err.message}`);
+            showToast(`Google 登入失敗: ${err.message}`, 'error');
         }
     });
 
@@ -591,6 +681,18 @@ export function setupEventListeners() {
             elements.newMemberName.value = '';
             if (elements.newMemberEmail) elements.newMemberEmail.value = '';
             renderAll();
+            showToast(`已新增成員「${name}」`, 'success');
+        }
+    });
+
+    // Esc 鍵關閉任何開啟中的 Modal
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+            document.querySelectorAll('.modal-overlay.active').forEach(modal => {
+                modal.classList.remove('active');
+            });
+            activeEditingWeekKey = null;
+            activeEditingMemberId = null;
         }
     });
 
@@ -632,20 +734,7 @@ export function setupEventListeners() {
         
         closeMsSettingsModal();
         renderAll();
-        alert('設定儲存成功！');
-    });
-
-    // 模擬 Microsoft 登入
-    elements.btnMsDemoLogin.addEventListener('click', () => {
-        const mockUser = {
-            name: '微軟測試用戶',
-            email: 'test_user@outlook.com',
-            avatar: '微軟'
-        };
-        saveDemoUser(mockUser);
-        closeMsSettingsModal();
-        renderAll();
-        alert('成功！已使用模擬 Microsoft 帳戶登入。');
+        showToast('設定儲存成功！', 'success');
     });
 
     // 編輯成員 Modal 事件開關
@@ -653,6 +742,34 @@ export function setupEventListeners() {
     elements.btnCancelEditMemberModal.addEventListener('click', closeEditMemberModal);
     elements.editMemberModal.addEventListener('click', (e) => {
         if (e.target === elements.editMemberModal) closeEditMemberModal();
+    });
+
+    // 上傳自訂頭像圖片
+    elements.btnUploadAvatar.addEventListener('click', () => elements.editMemberAvatarInput.click());
+    elements.editMemberAvatarInput.addEventListener('change', async (e) => {
+        const file = e.target.files && e.target.files[0];
+        if (!file) return;
+        if (!file.type.startsWith('image/')) {
+            showToast('請選擇圖片檔案 (JPG / PNG)！', 'warning');
+            return;
+        }
+        try {
+            pendingAvatarImage = await resizeImageToDataUrl(file);
+            elements.editMemberAvatarPreview.classList.add('has-img');
+            elements.editMemberAvatarPreview.innerText = '';
+            elements.editMemberAvatarPreview.style.background = `url('${pendingAvatarImage}') center / cover no-repeat`;
+        } catch (err) {
+            console.error(err);
+            showToast('圖片處理失敗，請換一張試試！', 'error');
+        }
+    });
+
+    // 移除自訂頭像，改回姓名第一個字
+    elements.btnRemoveAvatar.addEventListener('click', () => {
+        pendingAvatarImage = null;
+        elements.editMemberAvatarInput.value = '';
+        const member = getMembers().find(m => m.id === activeEditingMemberId);
+        applyAvatarToElement(elements.editMemberAvatarPreview, member ? { ...member, avatarImage: null } : null);
     });
 
     // 儲存修改的成員資料
@@ -663,7 +780,7 @@ export function setupEventListeners() {
         const newActive = elements.editMemberActive.checked;
         
         if (!newName) {
-            alert('姓名不能為空！');
+            showToast('姓名不能為空！', 'warning');
             return;
         }
 
@@ -673,185 +790,217 @@ export function setupEventListeners() {
             members[memberIdx].name = newName;
             members[memberIdx].email = newEmail;
             members[memberIdx].active = newActive;
-            
+
+            // 套用頭像變更 (undefined = 未變更)
+            if (pendingAvatarImage !== undefined) {
+                if (pendingAvatarImage === null) {
+                    delete members[memberIdx].avatarImage;
+                } else {
+                    members[memberIdx].avatarImage = pendingAvatarImage;
+                }
+            }
+
             saveMembers(members);
             closeEditMemberModal();
             renderAll();
-            alert('成員資料修改成功！');
+            showToast('成員資料修改成功！', 'success');
         }
     });
 }
 
-// 發送 Teams 提醒通知
-export async function sendTeamsNotification() {
-    const webhookUrl = getTeamsWebhookUrl();
-    if (!webhookUrl) {
-        alert('請先在設定中設定 Microsoft Teams Webhook URL！');
-        openMsSettingsModal();
-        return;
-    }
-
-    const today = new Date();
-    const currentWeekKey = getYearWeekString(today);
+// 取得本週值日資訊 (供通知共用)；無排班或無人員時回傳 null
+function getCurrentDutyInfo() {
+    const currentWeekKey = getYearWeekString(new Date());
     const schedule = getSchedule();
     const members = getMembers();
-    
+
     const currentDuty = schedule.find(s => s.weekKey === currentWeekKey);
-    if (!currentDuty || currentDuty.cleanerIds.length === 0) {
-        alert('本週尚未排定值日生，無法發送通知！');
-        return;
-    }
+    if (!currentDuty || currentDuty.cleanerIds.length === 0) return null;
 
     const cleanerNames = currentDuty.cleanerIds
         .map(cid => members.find(m => m.id === cid)?.name)
         .filter(Boolean)
         .join(', ');
 
-    const dateRange = currentDuty.dateRange;
+    return { cleanerNames, dateRange: currentDuty.dateRange, weekKey: currentWeekKey };
+}
+
+// 共用的 Teams Webhook 發送邏輯 (Adaptive Card)
+async function sendDutyWebhook(webhookUrl, { title, titleColor, containerStyle, rangeLabel, footerText, successMsg }) {
+    const duty = getCurrentDutyInfo();
+    if (!duty) {
+        showToast('本週尚未排定值日生，無法發送通知！', 'warning');
+        return;
+    }
 
     const adaptiveCard = {
         type: "AdaptiveCard",
         version: "1.4",
+        msteams: { width: "Full" },
         body: [
             {
                 type: "Container",
-                style: "accent",
+                style: containerStyle,
                 bleed: true,
                 items: [
                     {
-                        type: "TextBlock",
-                        text: "🧹 WhoClean 本週值日生提醒",
-                        weight: "Bolder",
-                        size: "Large",
-                        color: "Accent"
+                        type: "ColumnSet",
+                        columns: [
+                            {
+                                type: "Column",
+                                width: "auto",
+                                verticalContentAlignment: "Center",
+                                items: [
+                                    { type: "TextBlock", text: "🧹", size: "ExtraLarge" }
+                                ]
+                            },
+                            {
+                                type: "Column",
+                                width: "stretch",
+                                verticalContentAlignment: "Center",
+                                items: [
+                                    {
+                                        type: "TextBlock",
+                                        text: title,
+                                        weight: "Bolder",
+                                        size: "Large",
+                                        color: titleColor
+                                    },
+                                    {
+                                        type: "TextBlock",
+                                        text: "WhoClean · 值日生排班助手",
+                                        isSubtle: true,
+                                        size: "Small",
+                                        spacing: "None"
+                                    }
+                                ]
+                            }
+                        ]
                     }
                 ]
             },
             {
-                type: "FactSet",
+                type: "Container",
                 spacing: "Medium",
-                facts: [
+                items: [
                     {
-                        title: "本週值日生:",
-                        value: cleanerNames
+                        type: "TextBlock",
+                        text: "本週值日生",
+                        size: "Small",
+                        isSubtle: true,
+                        weight: "Bolder"
                     },
                     {
-                        title: "值日區間:",
-                        value: dateRange
+                        type: "TextBlock",
+                        text: duty.cleanerNames,
+                        size: "ExtraLarge",
+                        weight: "Bolder",
+                        color: titleColor,
+                        spacing: "Small",
+                        wrap: true
+                    }
+                ]
+            },
+            {
+                type: "ColumnSet",
+                spacing: "Medium",
+                separator: true,
+                columns: [
+                    {
+                        type: "Column",
+                        width: 1,
+                        items: [
+                            { type: "TextBlock", text: "📅 週數", size: "Small", isSubtle: true },
+                            { type: "TextBlock", text: duty.weekKey, weight: "Bolder", spacing: "None" }
+                        ]
+                    },
+                    {
+                        type: "Column",
+                        width: 1,
+                        items: [
+                            { type: "TextBlock", text: `🗓️ ${rangeLabel.replace(':', '')}`, size: "Small", isSubtle: true },
+                            { type: "TextBlock", text: duty.dateRange, weight: "Bolder", spacing: "None" }
+                        ]
                     }
                 ]
             },
             {
                 type: "TextBlock",
-                text: "請值日生記得撥空打掃，大家一起維護環境整潔喔！",
+                text: footerText,
                 wrap: true,
                 isSubtle: true,
-                spacing: "Medium"
+                spacing: "Medium",
+                separator: true
             }
         ],
         $schema: "http://adaptivecards.io/schemas/adaptive-card.json"
     };
 
+    // Power Automate「工作流程」Webhook 需要 attachments 信封格式
+    const payload = {
+        type: "message",
+        attachments: [
+            {
+                contentType: "application/vnd.microsoft.card.adaptive",
+                content: adaptiveCard
+            }
+        ]
+    };
+
     try {
-        await fetch(webhookUrl, {
+        const res = await fetch(webhookUrl, {
             method: 'POST',
             mode: 'cors',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(adaptiveCard)
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
         });
-        alert('已發送通知要求至 Teams！請至您的 Teams 頻道確認。');
+        if (res.ok || res.type === 'opaque') {
+            showToast(successMsg, 'success');
+        } else {
+            showToast(`Teams 回應異常 (HTTP ${res.status})，請確認 Webhook URL！`, 'error');
+        }
     } catch (err) {
         console.error(err);
-        alert('發送失敗，請確認 Webhook URL 是否正確！');
+        showToast('發送失敗，請確認 Webhook URL 是否正確！', 'error');
     }
+}
+
+// 發送 Teams 頻道提醒通知
+export async function sendTeamsNotification() {
+    const webhookUrl = getTeamsWebhookUrl();
+    if (!webhookUrl) {
+        showToast('請先在設定中設定 Microsoft Teams Webhook URL！', 'warning');
+        openMsSettingsModal();
+        return;
+    }
+
+    await sendDutyWebhook(webhookUrl, {
+        title: "🧹 WhoClean 本週值日生提醒",
+        titleColor: "Accent",
+        containerStyle: "accent",
+        rangeLabel: "值日區間:",
+        footerText: "請值日生記得撥空打掃，大家一起維護環境整潔喔！",
+        successMsg: '已發送通知至 Teams 頻道！請至頻道確認。'
+    });
 }
 
 // 發送個人 Teams 提醒通知
 export async function sendPersonalTeamsNotification() {
     const webhookUrl = getPersonalTeamsWebhookUrl();
     if (!webhookUrl) {
-        alert('請先在設定中設定您的個人 Teams Webhook URL！');
+        showToast('請先在設定中設定您的個人 Teams Webhook URL！', 'warning');
         openMsSettingsModal();
         return;
     }
 
-    const today = new Date();
-    const currentWeekKey = getYearWeekString(today);
-    const schedule = getSchedule();
-    const members = getMembers();
-    
-    const currentDuty = schedule.find(s => s.weekKey === currentWeekKey);
-    if (!currentDuty || currentDuty.cleanerIds.length === 0) {
-        alert('本週尚未排定值日生，無法發送通知！');
-        return;
-    }
-
-    const cleanerNames = currentDuty.cleanerIds
-        .map(cid => members.find(m => m.id === cid)?.name)
-        .filter(Boolean)
-        .join(', ');
-
-    const dateRange = currentDuty.dateRange;
-
-    const adaptiveCard = {
-        type: "AdaptiveCard",
-        version: "1.4",
-        body: [
-            {
-                type: "Container",
-                style: "good",
-                bleed: true,
-                items: [
-                    {
-                        type: "TextBlock",
-                        text: "🔔 WhoClean 值日生個人通知",
-                        weight: "Bolder",
-                        size: "Large",
-                        color: "Good"
-                    }
-                ]
-            },
-            {
-                type: "FactSet",
-                spacing: "Medium",
-                facts: [
-                    {
-                        title: "本週值日生:",
-                        value: cleanerNames
-                    },
-                    {
-                        title: "打掃區間:",
-                        value: dateRange
-                    }
-                ]
-            },
-            {
-                type: "TextBlock",
-                text: "這是您自己設定的個人通知，提醒您注意打掃輪值！",
-                wrap: true,
-                isSubtle: true,
-                spacing: "Medium"
-            }
-        ],
-        $schema: "http://adaptivecards.io/schemas/adaptive-card.json"
-    };
-
-    try {
-        await fetch(webhookUrl, {
-            method: 'POST',
-            mode: 'cors',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(adaptiveCard)
-        });
-        alert('已發送個人提醒通知至您的 Teams！請前往您的個人 Teams 確認。');
-    } catch (err) {
-        console.error(err);
-        alert('發送失敗，請確認個人 Webhook URL 是否正確！');
-    }
+    await sendDutyWebhook(webhookUrl, {
+        title: "🔔 WhoClean 值日生個人通知",
+        titleColor: "Good",
+        containerStyle: "good",
+        rangeLabel: "打掃區間:",
+        footerText: "這是您自己設定的個人通知，提醒您注意打掃輪值！",
+        successMsg: '已發送個人提醒至您的 Teams！'
+    });
 }
 
 // 刷新全部 UI 面板

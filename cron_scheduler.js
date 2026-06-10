@@ -177,6 +177,7 @@ async function run() {
     const adaptiveCard = {
         type: "AdaptiveCard",
         version: "1.4",
+        msteams: { width: "Full" },
         body: [
             {
                 type: "Container",
@@ -184,37 +185,107 @@ async function run() {
                 bleed: true,
                 items: [
                     {
-                        type: "TextBlock",
-                        text: "🧹 WhoClean 本週值日生提醒 (排程自動發送)",
-                        weight: "Bolder",
-                        size: "Large",
-                        color: "Accent"
+                        type: "ColumnSet",
+                        columns: [
+                            {
+                                type: "Column",
+                                width: "auto",
+                                verticalContentAlignment: "Center",
+                                items: [
+                                    { type: "TextBlock", text: "🧹", size: "ExtraLarge" }
+                                ]
+                            },
+                            {
+                                type: "Column",
+                                width: "stretch",
+                                verticalContentAlignment: "Center",
+                                items: [
+                                    {
+                                        type: "TextBlock",
+                                        text: "新的一週開始！本週值日生提醒",
+                                        weight: "Bolder",
+                                        size: "Large",
+                                        color: "Accent"
+                                    },
+                                    {
+                                        type: "TextBlock",
+                                        text: "WhoClean · 每週一 08:00 自動排程通知",
+                                        isSubtle: true,
+                                        size: "Small",
+                                        spacing: "None"
+                                    }
+                                ]
+                            }
+                        ]
                     }
                 ]
             },
             {
-                type: "FactSet",
+                type: "Container",
                 spacing: "Medium",
-                facts: [
+                items: [
                     {
-                        title: "本週值日生:",
-                        value: cleanerName
+                        type: "TextBlock",
+                        text: "本週值日生",
+                        size: "Small",
+                        isSubtle: true,
+                        weight: "Bolder"
                     },
                     {
-                        title: "值日區間:",
-                        value: dateRange
+                        type: "TextBlock",
+                        text: cleanerName,
+                        size: "ExtraLarge",
+                        weight: "Bolder",
+                        color: "Accent",
+                        spacing: "Small",
+                        wrap: true
+                    }
+                ]
+            },
+            {
+                type: "ColumnSet",
+                spacing: "Medium",
+                separator: true,
+                columns: [
+                    {
+                        type: "Column",
+                        width: 1,
+                        items: [
+                            { type: "TextBlock", text: "📅 週數", size: "Small", isSubtle: true },
+                            { type: "TextBlock", text: currentWeekKey, weight: "Bolder", spacing: "None" }
+                        ]
+                    },
+                    {
+                        type: "Column",
+                        width: 1,
+                        items: [
+                            { type: "TextBlock", text: "🗓️ 值日區間", size: "Small", isSubtle: true },
+                            { type: "TextBlock", text: dateRange, weight: "Bolder", spacing: "None" }
+                        ]
                     }
                 ]
             },
             {
                 type: "TextBlock",
-                text: "新的一週開始囉！請值日生記得撥空打掃，維護環境整潔！",
+                text: "請值日生記得撥空打掃，大家一起維護環境整潔！💪",
                 wrap: true,
                 isSubtle: true,
-                spacing: "Medium"
+                spacing: "Medium",
+                separator: true
             }
         ],
         $schema: "http://adaptivecards.io/schemas/adaptive-card.json"
+    };
+
+    // Power Automate「工作流程」Webhook 需要 attachments 信封格式
+    const payload = {
+        type: "message",
+        attachments: [
+            {
+                contentType: "application/vnd.microsoft.card.adaptive",
+                content: adaptiveCard
+            }
+        ]
     };
 
     try {
@@ -223,7 +294,7 @@ async function run() {
             headers: {
                 'Content-Type': 'application/json'
             },
-            body: JSON.stringify(adaptiveCard)
+            body: JSON.stringify(payload)
         });
         
         if (response.ok) {

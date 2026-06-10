@@ -31,7 +31,7 @@ async function syncToFirebase() {
     }
 }
 
-export async function initStorage() {
+export async function initStorage(config = null) {
     if (!localStorage.getItem(STORAGE_KEYS.MEMBERS)) {
         localStorage.setItem(STORAGE_KEYS.MEMBERS, JSON.stringify([]));
     }
@@ -45,17 +45,20 @@ export async function initStorage() {
         localStorage.setItem(STORAGE_KEYS.PERSONAL_TEAMS_WEBHOOK, '');
     }
 
-    // 嘗試讀取 config.json 來初始化 Firebase
+    // 使用傳入的 config 初始化 Firebase (由 app.js 統一讀取，避免重複 fetch)
     try {
-        const response = await fetch('./config.json');
-        if (response.ok) {
-            const config = await response.json();
+        if (config) {
             if (config.firebaseConfig && config.firebaseConfig.apiKey) {
                 console.log("偵測到 Firebase 設定，開始初始化...");
-                const { initializeApp } = await import('https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js');
+                const { initializeApp, getApp } = await import('https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js');
                 const { getFirestore, doc, getDoc } = await import('https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js');
-                
-                firebaseApp = initializeApp(config.firebaseConfig);
+
+                // 若 auth.js 已初始化過 [DEFAULT] App，重複 initializeApp 會丟出 duplicate-app
+                try {
+                    firebaseApp = getApp();
+                } catch {
+                    firebaseApp = initializeApp(config.firebaseConfig);
+                }
                 db = getFirestore(firebaseApp);
                 isFirebaseEnabled = true;
 
@@ -214,8 +217,4 @@ export function updateWeekCleaner(weekKey, cleanerIds) {
             memberId: cleanerIds[0]
         });
     }
-}
-
-export function saveHistory(history) {
-    localStorage.setItem(STORAGE_KEYS.HISTORY, JSON.stringify(history));
 }
