@@ -251,11 +251,36 @@ export function closeEditMemberModal() {
     pendingAvatarImage = undefined;
 }
 
+// 更新瀏覽器通知狀態顯示
+export function updateNotificationStatus() {
+    const statusEl = document.getElementById('browser-notification-status');
+    const btnEl = document.getElementById('btn-request-notification');
+    if (!statusEl || !btnEl) return;
+
+    if (!('Notification' in window)) {
+        statusEl.innerText = '您的瀏覽器不支援桌面通知';
+        btnEl.style.display = 'none';
+        return;
+    }
+
+    if (Notification.permission === 'granted') {
+        statusEl.innerText = '✅ 已授權（可接收通知）';
+        btnEl.innerText = '測試通知';
+    } else if (Notification.permission === 'denied') {
+        statusEl.innerText = '❌ 已拒絕（請至瀏覽器設定開啟）';
+        btnEl.innerText = '重新嘗試';
+    } else {
+        statusEl.innerText = '⚠️ 尚未授權（點選啟用）';
+        btnEl.innerText = '啟用通知';
+    }
+}
+
 export function openMsSettingsModal() {
     elements.msClientIdInput.value = getMicrosoftClientId();
     elements.teamsWebhookInput.value = getTeamsWebhookUrl();
     elements.personalTeamsWebhookInput.value = getPersonalTeamsWebhookUrl();
     elements.msSettingsModal.classList.add('active');
+    updateNotificationStatus();
 }
 
 export function closeMsSettingsModal() {
@@ -737,6 +762,30 @@ export function setupEventListeners() {
         showToast('設定儲存成功！', 'success');
     });
 
+    // 瀏覽器桌面通知啟用按鈕
+    const btnReqNotification = document.getElementById('btn-request-notification');
+    if (btnReqNotification) {
+        btnReqNotification.addEventListener('click', async () => {
+            if (!('Notification' in window)) return;
+            if (Notification.permission === 'granted') {
+                new Notification('🧹 WhoClean 測試通知', {
+                    body: '太棒了！您已成功啟用桌面通知。',
+                    icon: 'color.png'
+                });
+            } else {
+                const permission = await Notification.requestPermission();
+                updateNotificationStatus();
+                if (permission === 'granted') {
+                    new Notification('🧹 WhoClean 測試通知', {
+                        body: '太棒了！您已成功啟用桌面通知，當您需要打掃時將會提醒您。',
+                        icon: 'color.png'
+                    });
+                }
+            }
+        });
+    }
+    updateNotificationStatus();
+
     // 編輯成員 Modal 事件開關
     elements.btnCloseEditMemberModal.addEventListener('click', closeEditMemberModal);
     elements.btnCancelEditMemberModal.addEventListener('click', closeEditMemberModal);
@@ -1003,10 +1052,46 @@ export async function sendPersonalTeamsNotification() {
     });
 }
 
+let weeklyNotificationChecked = false;
+
+// 檢查當前登入者是否為本週值日生並顯示桌面通知
+export async function checkAndShowWeeklyNotification() {
+    if (weeklyNotificationChecked) return;
+    if (!('Notification' in window) || Notification.permission !== 'granted') return;
+
+    const user = await getCurrentUser();
+    if (!user) return;
+
+    const currentWeekKey = getYearWeekString(new Date());
+    const schedule = getSchedule();
+    const members = getMembers();
+    const currentDuty = schedule.find(s => s.weekKey === currentWeekKey);
+    if (!currentDuty) return;
+
+    // 檢查目前登入的使用者是否為本週值日生
+    const activeCleaners = currentDuty.cleanerIds.map(cid => members.find(m => m.id === cid)).filter(Boolean);
+    const isCurrentUserCleaner = activeCleaners.some(c => 
+        c.name === user.name || (user.email && c.email === user.email)
+    );
+
+    if (isCurrentUserCleaner) {
+        const notifiedKey = `whoclean_notified_week_${currentWeekKey}`;
+        if (!localStorage.getItem(notifiedKey)) {
+            new Notification('🧹 WhoClean 值日生提醒', {
+                body: `嗨 ${user.name}！這週輪到您當值日生囉，請記得撥空打掃！`,
+                icon: 'color.png'
+            });
+            localStorage.setItem(notifiedKey, 'true');
+        }
+    }
+    weeklyNotificationChecked = true;
+}
+
 // 刷新全部 UI 面板
 export function renderAll() {
     renderAuthStatus();
     renderHero();
     renderMembers();
     renderSchedule();
+    checkAndShowWeeklyNotification();
 }

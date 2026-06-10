@@ -168,6 +168,20 @@
                     </label>
                     <input type="text" class="form-control" id="ms-client-id-input" placeholder="請貼上 Azure 註冊的 Client ID...">
                 </div>
+
+                <!-- Browser Desktop Notifications -->
+                <div class="modal-section bordered">
+                    <label class="form-label">
+                        <i class="fa-solid fa-desktop"></i> 瀏覽器桌面通知設定:
+                    </label>
+                    <div style="display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 5px;">
+                        <span id="browser-notification-status" style="font-size: 0.9rem; color: var(--text-muted);">檢查中...</span>
+                        <button type="button" class="btn btn-secondary btn-sm" id="btn-request-notification" style="padding: 0.25rem 0.75rem; font-size: 0.85rem;">啟用通知</button>
+                    </div>
+                    <p class="modal-note" style="margin-top: 5px;">
+                        開啟後，系統可在值日生更換或您需要打掃時，直接在桌面彈出通知提醒您。
+                    </p>
+                </div>
             </div>
             <div class="modal-footer">
                 <button class="btn btn-secondary" id="btn-cancel-ms-modal">關閉</button>
