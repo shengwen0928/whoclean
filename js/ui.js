@@ -384,32 +384,15 @@ export function renderHero() {
 
     // 動態產生操作按鈕
     let buttonsHtml = `
-        <button class="btn btn-primary" id="btn-edit-current">
+        <button class="btn btn-primary btn-block" id="btn-edit-current">
             <i class="fa-solid fa-user-pen"></i> 修改人員
         </button>
-        <button class="btn btn-teams" id="btn-send-teams">
-            <i class="fa-solid fa-paper-plane"></i> 頻道通知
-        </button>
     `;
-
-    // 如果使用者設定了個人專屬 Webhook，就多渲染一個「提醒我自己」的按鈕
-    const personalWebhook = getPersonalTeamsWebhookUrl();
-    if (personalWebhook) {
-        buttonsHtml += `
-            <button class="btn btn-secondary" id="btn-send-personal-teams">
-                <i class="fa-regular fa-bell"></i> 提醒我自己
-            </button>
-        `;
-    }
 
     elements.heroActionContainer.innerHTML = buttonsHtml;
 
     // 綁定動態生成的按鈕事件
     document.getElementById('btn-edit-current').onclick = () => openEditModal(currentWeekKey);
-    document.getElementById('btn-send-teams').onclick = sendTeamsNotification;
-    if (personalWebhook) {
-        document.getElementById('btn-send-personal-teams').onclick = sendPersonalTeamsNotification;
-    }
 }
 
 // 渲染成員列表
