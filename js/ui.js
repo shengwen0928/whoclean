@@ -596,23 +596,42 @@ export function openEditModal(weekKey) {
     elements.modalWeekRange.innerText = `週數: ${weekItem.weekKey} (${weekItem.dateRange})`;
     elements.modalCheckboxes.innerHTML = '';
 
-    if (members.length === 0) {
-        elements.modalCheckboxes.innerHTML = `<p style="color: var(--text-secondary); text-align: center; padding: 1rem;">請先在右側「成員管理」中新增成員！</p>`;
+    // 僅顯示啟用狀態的成員；若該成員已是本週值日生，即使為非啟用也顯示出來，以便取消或檢視
+    const displayMembers = members.filter(m => m.active || weekItem.cleanerIds.includes(m.id));
+
+    if (displayMembers.length === 0) {
+        elements.modalCheckboxes.innerHTML = `<p style="color: var(--text-secondary); text-align: center; padding: 1rem;">無可用的啟用成員，請先啟用成員或新增成員！</p>`;
         elements.btnSaveModal.disabled = true;
         elements.editModal.classList.add('active');
         return;
     }
 
     elements.btnSaveModal.disabled = false;
-    members.forEach(m => {
+
+    // 新增「無值日生」的單選選項
+    const isNoneChecked = weekItem.cleanerIds.length === 0;
+    const labelNone = document.createElement('label');
+    labelNone.className = 'member-checkbox-item';
+    labelNone.innerHTML = `
+        <input type="radio" name="cleaner-select" value="" ${isNoneChecked ? 'checked' : ''}>
+        <span class="custom-checkbox" style="border-radius: 50%;"></span>
+        <div class="avatar sm" style="background: rgba(255,255,255,0.05); border: 1px dashed var(--border-strong); color: var(--text-muted); display: inline-flex; align-items: center; justify-content: center;">
+            <i class="fa-solid fa-ban" style="font-size: 0.8rem;"></i>
+        </div>
+        <span>無值日生</span>
+    `;
+    elements.modalCheckboxes.appendChild(labelNone);
+
+    displayMembers.forEach(m => {
         const isChecked = weekItem.cleanerIds.includes(m.id);
         const label = document.createElement('label');
         label.className = 'member-checkbox-item';
+        const inactiveTag = m.active ? '' : ' <span style="font-size: 0.75rem; color: var(--text-danger); background: rgba(239, 83, 80, 0.1); padding: 1px 4px; border-radius: 3px;">已停用</span>';
         label.innerHTML = `
-            <input type="checkbox" value="${m.id}" ${isChecked ? 'checked' : ''}>
-            <span class="custom-checkbox"></span>
+            <input type="radio" name="cleaner-select" value="${m.id}" ${isChecked ? 'checked' : ''}>
+            <span class="custom-checkbox" style="border-radius: 50%;"></span>
             ${avatarHtml(m, 'sm')}
-            <span>${escapeHtml(m.name)}</span>
+            <span>${escapeHtml(m.name)}${inactiveTag}</span>
         `;
         elements.modalCheckboxes.appendChild(label);
     });
@@ -731,8 +750,9 @@ export function setupEventListeners() {
     // 儲存變更
     elements.btnSaveModal.addEventListener('click', () => {
         if (!activeEditingWeekKey) return;
-        const checkboxes = elements.modalCheckboxes.querySelectorAll('input[type="checkbox"]:checked');
-        const selectedIds = Array.from(checkboxes).map(cb => cb.value);
+        const selectedRadio = elements.modalCheckboxes.querySelector('input[name="cleaner-select"]:checked');
+        const selectedId = selectedRadio ? selectedRadio.value : '';
+        const selectedIds = selectedId ? [selectedId] : [];
         
         updateWeekCleaner(activeEditingWeekKey, selectedIds);
         closeEditModal();
