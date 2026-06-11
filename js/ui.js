@@ -1,6 +1,9 @@
 import { getMembers, getSchedule, addMember, removeMember, updateWeekCleaner, moveMemberUp, moveMemberDown, getTeamsWebhookUrl, saveTeamsWebhookUrl, getPersonalTeamsWebhookUrl, savePersonalTeamsWebhookUrl, saveMembers } from './storage.js';
 import { getYearWeekString, getWeekRangeText, escapeHtml } from './utils.js';
 import { getMicrosoftClientId, saveMicrosoftClientId, getCurrentUser, login, logout, registerWithEmail, loginWithEmail, loginWithGoogle } from './auth.js';
+import { initCustomDatePicker } from './datepicker.js';
+
+let reactivateDatePicker = null;
 
 // DOM 元素快取
 const elements = {
@@ -240,14 +243,17 @@ export function openEditMemberModal(memberId) {
 
         // 自動啟用日期顯示
         const autoReactivateRow = document.getElementById('auto-reactivate-row');
-        const reactivateDateInput = document.getElementById('edit-member-reactivate-date');
-        if (autoReactivateRow && reactivateDateInput) {
+        if (autoReactivateRow) {
             if (!isActive) {
                 autoReactivateRow.style.display = 'block';
-                reactivateDateInput.value = member.autoReactivateDate || '';
+                if (reactivateDatePicker) {
+                    reactivateDatePicker.setValue(member.autoReactivateDate || '');
+                }
             } else {
                 autoReactivateRow.style.display = 'none';
-                reactivateDateInput.value = '';
+                if (reactivateDatePicker) {
+                    reactivateDatePicker.setValue('');
+                }
             }
         }
 
@@ -265,11 +271,13 @@ export function closeEditMemberModal() {
     activeEditingMemberId = null;
     pendingAvatarImage = undefined;
 
-    // 重設日期選擇欄位
+    // 重設日期選擇欄位與日曆
     const autoReactivateRow = document.getElementById('auto-reactivate-row');
-    const reactivateDateInput = document.getElementById('edit-member-reactivate-date');
     if (autoReactivateRow) autoReactivateRow.style.display = 'none';
-    if (reactivateDateInput) reactivateDateInput.value = '';
+    if (reactivateDatePicker) {
+        reactivateDatePicker.setValue('');
+        reactivateDatePicker.close();
+    }
 }
 
 // 更新瀏覽器通知狀態顯示
@@ -896,10 +904,10 @@ export function setupEventListeners() {
             members[memberIdx].active = newActive;
 
             // 儲存自動啟用日期
-            const reactivateDateInput = document.getElementById('edit-member-reactivate-date');
-            if (reactivateDateInput) {
-                if (!newActive && reactivateDateInput.value) {
-                    members[memberIdx].autoReactivateDate = reactivateDateInput.value;
+            if (reactivateDatePicker) {
+                const dateVal = reactivateDatePicker.getValue();
+                if (!newActive && dateVal) {
+                    members[memberIdx].autoReactivateDate = dateVal;
                 } else {
                     delete members[memberIdx].autoReactivateDate;
                 }
@@ -920,6 +928,13 @@ export function setupEventListeners() {
             showToast('成員資料修改成功！', 'success');
         }
     });
+
+    // 初始化自訂日期選擇器
+    reactivateDatePicker = initCustomDatePicker(
+        'edit-member-reactivate-date',
+        'reactivate-datepicker-wrapper',
+        'reactivate-calendar'
+    );
 }
 
 // 取得本週值日資訊 (供通知共用)；無排班或無人員時回傳 null

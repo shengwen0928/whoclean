@@ -276,7 +276,10 @@
                 </div>
                 <div class="form-group" id="auto-reactivate-row" style="display: none; border-top: 1px dashed var(--border); padding-top: 0.75rem; margin-top: 0.75rem;">
                     <label class="form-label" for="edit-member-reactivate-date" style="margin-bottom: 0.4rem;">自動啟用日期 (選填):</label>
-                    <input type="date" class="form-control" id="edit-member-reactivate-date">
+                    <div class="custom-datepicker-wrapper" id="reactivate-datepicker-wrapper">
+                        <input type="text" class="form-control" id="edit-member-reactivate-date" placeholder="選擇日期..." readonly>
+                        <div class="datepicker-calendar" id="reactivate-calendar"></div>
+                    </div>
                     <p class="modal-note" style="margin-top: 0.3rem; margin-bottom: 0;">設定日期後，系統將於該日自動將此成員重新恢復為啟用狀態。</p>
                 </div>
             </div>
