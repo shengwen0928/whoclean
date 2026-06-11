@@ -157,7 +157,7 @@ body::before {
 .brand-mark {
     width: 38px;
     height: 38px;
-    border-radius: var(--radius-md);
+    border-radius: 50%;
     background: linear-gradient(135deg, var(--accent-deep) 0%, #8F9AFA 100%);
     box-shadow: var(--shadow-accent), inset 0 1px 0 rgba(255, 255, 255, 0.25);
     display: flex;
