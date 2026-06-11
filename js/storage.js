@@ -102,7 +102,38 @@ export function savePersonalTeamsWebhookUrl(url) {
 }
 
 export function getMembers() {
-    return JSON.parse(localStorage.getItem(STORAGE_KEYS.MEMBERS)) || [];
+    let members = [];
+    try {
+        members = JSON.parse(localStorage.getItem(STORAGE_KEYS.MEMBERS)) || [];
+    } catch {
+        members = [];
+    }
+
+    // 自動啟用功能偵測
+    let hasChanges = false;
+    const today = new Date();
+    const yyyy = today.getFullYear();
+    const mm = String(today.getMonth() + 1).padStart(2, '0');
+    const dd = String(today.getDate()).padStart(2, '0');
+    const todayStr = `${yyyy}-${mm}-${dd}`;
+
+    members = members.map(m => {
+        if (!m.active && m.autoReactivateDate) {
+            if (todayStr >= m.autoReactivateDate) {
+                m.active = true;
+                delete m.autoReactivateDate;
+                hasChanges = true;
+            }
+        }
+        return m;
+    });
+
+    if (hasChanges) {
+        localStorage.setItem(STORAGE_KEYS.MEMBERS, JSON.stringify(members));
+        setTimeout(() => syncToFirebase(), 0);
+    }
+
+    return members;
 }
 
 export function saveMembers(members) {

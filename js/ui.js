@@ -234,7 +234,22 @@ export function openEditMemberModal(memberId) {
     if (member) {
         elements.editMemberName.value = member.name;
         elements.editMemberEmail.value = member.email || '';
-        elements.editMemberActive.checked = member.active !== false;
+        
+        const isActive = member.active !== false;
+        elements.editMemberActive.checked = isActive;
+
+        // 自動啟用日期顯示
+        const autoReactivateRow = document.getElementById('auto-reactivate-row');
+        const reactivateDateInput = document.getElementById('edit-member-reactivate-date');
+        if (autoReactivateRow && reactivateDateInput) {
+            if (!isActive) {
+                autoReactivateRow.style.display = 'block';
+                reactivateDateInput.value = member.autoReactivateDate || '';
+            } else {
+                autoReactivateRow.style.display = 'none';
+                reactivateDateInput.value = '';
+            }
+        }
 
         // 頭像預覽：重設變更狀態並顯示現有頭像
         pendingAvatarImage = undefined;
@@ -249,6 +264,12 @@ export function closeEditMemberModal() {
     elements.editMemberModal.classList.remove('active');
     activeEditingMemberId = null;
     pendingAvatarImage = undefined;
+
+    // 重設日期選擇欄位
+    const autoReactivateRow = document.getElementById('auto-reactivate-row');
+    const reactivateDateInput = document.getElementById('edit-member-reactivate-date');
+    if (autoReactivateRow) autoReactivateRow.style.display = 'none';
+    if (reactivateDateInput) reactivateDateInput.value = '';
 }
 
 // 更新瀏覽器通知狀態顯示
@@ -813,6 +834,20 @@ export function setupEventListeners() {
         if (e.target === elements.editMemberModal) closeEditMemberModal();
     });
 
+    // 當切換啟用/停用狀態時，動態顯示/隱藏自動啟用日期欄位
+    elements.editMemberActive.addEventListener('change', (e) => {
+        const autoReactivateRow = document.getElementById('auto-reactivate-row');
+        const reactivateDateInput = document.getElementById('edit-member-reactivate-date');
+        if (autoReactivateRow) {
+            if (!e.target.checked) {
+                autoReactivateRow.style.display = 'block';
+            } else {
+                autoReactivateRow.style.display = 'none';
+                if (reactivateDateInput) reactivateDateInput.value = '';
+            }
+        }
+    });
+
     // 上傳自訂頭像圖片
     elements.btnUploadAvatar.addEventListener('click', () => elements.editMemberAvatarInput.click());
     elements.editMemberAvatarInput.addEventListener('change', async (e) => {
@@ -859,6 +894,16 @@ export function setupEventListeners() {
             members[memberIdx].name = newName;
             members[memberIdx].email = newEmail;
             members[memberIdx].active = newActive;
+
+            // 儲存自動啟用日期
+            const reactivateDateInput = document.getElementById('edit-member-reactivate-date');
+            if (reactivateDateInput) {
+                if (!newActive && reactivateDateInput.value) {
+                    members[memberIdx].autoReactivateDate = reactivateDateInput.value;
+                } else {
+                    delete members[memberIdx].autoReactivateDate;
+                }
+            }
 
             // 套用頭像變更 (undefined = 未變更)
             if (pendingAvatarImage !== undefined) {
