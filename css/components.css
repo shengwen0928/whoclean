@@ -905,7 +905,8 @@
     border-color: rgba(124, 140, 248, 0.35);
 }
 
-.member-checkbox-item input[type="checkbox"] {
+.member-checkbox-item input[type="checkbox"],
+.member-checkbox-item input[type="radio"] {
     position: absolute;
     opacity: 0;
     width: 0;
