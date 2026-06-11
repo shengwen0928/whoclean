@@ -353,3 +353,40 @@ body::before {
         scroll-behavior: auto !important;
     }
 }
+
+/* 行動裝置極小螢幕優化 (手機/折疊機自適應) */
+@media (max-width: 480px) {
+    .topbar-inner {
+        padding: 0.6rem 0.9rem;
+    }
+    .brand-name {
+        font-size: 0.95rem;
+    }
+    .brand-tagline {
+        display: none; /* 手機上隱藏副標以節省導覽列空間 */
+    }
+    .page {
+        padding: 0.8rem;
+    }
+    .billboard-main {
+        padding: 1.2rem 1rem;
+    }
+    .board-card-head {
+        padding: 0.9rem 1rem;
+    }
+    .board-card-body {
+        padding: 1rem;
+    }
+    .toast-container {
+        width: 100%;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        padding: 10px;
+    }
+    .toast {
+        width: 100%;
+        min-width: 100%;
+    }
+}
+

@@ -1,0 +1,18 @@
+{
+  "name": "WhoClean 值日生排班助手",
+  "short_name": "WhoClean",
+  "description": "極簡、現代且美觀的團隊與家庭本週值日生排班紀錄與提醒工具。",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#0a0a0c",
+  "theme_color": "#7c8cf8",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "color.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
