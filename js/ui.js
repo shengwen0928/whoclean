@@ -964,7 +964,7 @@ async function sendDutyWebhook(webhookUrl, { title, titleColor, containerStyle, 
 
     const adaptiveCard = {
         type: "AdaptiveCard",
-        version: "1.4",
+        version: "1.2",
         msteams: { width: "Full" },
         body: [
             {
@@ -1104,7 +1104,7 @@ export async function sendTeamsNotification() {
     }
 
     await sendDutyWebhook(webhookUrl, {
-        title: "🧹 WhoClean 本週值日生提醒",
+        title: "WhoClean 本週值日生提醒",
         titleColor: "Accent",
         containerStyle: "accent",
         rangeLabel: "值日區間:",
