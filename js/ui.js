@@ -11,7 +11,6 @@ const elements = {
     heroCleaners: document.getElementById('hero-cleaners-container'),
     heroWeek: document.getElementById('hero-week-str'),
     heroDate: document.getElementById('hero-date-range'),
-    heroActionContainer: document.getElementById('hero-action-container'),
     
     scheduleContainer: document.getElementById('schedule-container'),
     
@@ -351,48 +350,47 @@ export function renderHero() {
     // 若本週沒有排班，點擊快速生成
     if (!currentDuty) {
         applyAvatarToElement(elements.heroAvatar, null);
-        elements.heroCleaners.innerHTML = `<span class="hero-cleaner-name" style="color: var(--text-muted)">本週尚未安排值日生</span>`;
-        elements.heroWeek.innerHTML = `<i class="fa-regular fa-calendar"></i> ${currentWeekKey}`;
-        elements.heroDate.innerHTML = `<i class="fa-solid fa-clock"></i> ${getWeekRangeText(currentWeekKey)}`;
-        elements.heroActionContainer.innerHTML = `
-            <button class="btn btn-primary btn-block" id="btn-edit-current">
-                <i class="fa-solid fa-user-pen"></i> 安排值日生
+        elements.heroCleaners.innerHTML = `
+            <span class="hero-cleaner-name" style="color: var(--text-muted)">本週尚未安排值日生</span>
+            <button class="btn-edit-inline" id="btn-edit-inline" title="安排值日生" aria-label="安排值日生">
+                <i class="fa-solid fa-pen-to-square"></i>
             </button>
         `;
-        document.getElementById('btn-edit-current').onclick = () => openEditModal(currentWeekKey);
+        elements.heroWeek.innerHTML = `<i class="fa-regular fa-calendar"></i> ${currentWeekKey}`;
+        elements.heroDate.innerHTML = `<i class="fa-solid fa-clock"></i> ${getWeekRangeText(currentWeekKey)}`;
+        document.getElementById('btn-edit-inline').onclick = () => openEditModal(currentWeekKey);
         return;
     }
 
     // 取得所有本週值日生資料
     const activeCleaners = currentDuty.cleanerIds.map(cid => members.find(m => m.id === cid)).filter(Boolean);
 
+    let cleanersHtml = '';
     if (activeCleaners.length === 0) {
         applyAvatarToElement(elements.heroAvatar, null);
-        elements.heroCleaners.innerHTML = `<span class="hero-cleaner-name" style="color: var(--text-muted)">尚未指派人員</span>`;
+        cleanersHtml = `<span class="hero-cleaner-name" style="color: var(--text-muted)">尚未指派人員</span>`;
     } else {
         // 設定大頭貼 (支援自訂圖片)
         applyAvatarToElement(elements.heroAvatar, activeCleaners[0]);
         
         // 渲染名字 (螢光筆 highlight 效果)
-        elements.heroCleaners.innerHTML = activeCleaners.map(ac =>
+        cleanersHtml = activeCleaners.map(ac =>
             `<span class="hero-cleaner-name">${escapeHtml(ac.name)}</span>`
         ).join(' <span class="hero-cleaner-sep">&amp;</span> ');
     }
 
-    elements.heroWeek.innerHTML = `<i class="fa-regular fa-calendar"></i> ${currentDuty.weekKey}`;
-    elements.heroDate.innerHTML = `<i class="fa-solid fa-clock"></i> ${currentDuty.dateRange}`;
-
-    // 動態產生操作按鈕
-    let buttonsHtml = `
-        <button class="btn btn-primary btn-block" id="btn-edit-current">
-            <i class="fa-solid fa-user-pen"></i> 修改人員
+    // 在名字右方加上內嵌的編輯按鈕
+    elements.heroCleaners.innerHTML = cleanersHtml + `
+        <button class="btn-edit-inline" id="btn-edit-inline" title="編輯值日生" aria-label="編輯值日生">
+            <i class="fa-solid fa-pen-to-square"></i>
         </button>
     `;
 
-    elements.heroActionContainer.innerHTML = buttonsHtml;
+    elements.heroWeek.innerHTML = `<i class="fa-regular fa-calendar"></i> ${currentDuty.weekKey}`;
+    elements.heroDate.innerHTML = `<i class="fa-solid fa-clock"></i> ${currentDuty.dateRange}`;
 
-    // 綁定動態生成的按鈕事件
-    document.getElementById('btn-edit-current').onclick = () => openEditModal(currentWeekKey);
+    // 綁定內嵌編輯按鈕事件
+    document.getElementById('btn-edit-inline').onclick = () => openEditModal(currentWeekKey);
 }
 
 // 渲染成員列表

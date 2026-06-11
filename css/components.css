@@ -189,7 +189,7 @@
    -------------------------------------------------------------------------- */
 .billboard {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) 230px;
+    grid-template-columns: 1fr;
     background: var(--card);
     border: 1px solid var(--border);
     border-radius: var(--radius-xl);
@@ -1205,3 +1205,28 @@
     padding-top: 8px;
     margin-top: 4px;
 }
+
+/* --------------------------------------------------------------------------
+   Inline Edit Button Styling
+   -------------------------------------------------------------------------- */
+.btn-edit-inline {
+    background: transparent;
+    border: none;
+    color: var(--text-muted);
+    cursor: pointer;
+    padding: 4px 6px;
+    margin-left: 8px;
+    font-size: 0.95rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: var(--radius-sm);
+    transition: all var(--t-fast);
+    vertical-align: middle;
+}
+
+.btn-edit-inline:hover {
+    background: rgba(255, 255, 255, 0.08);
+    color: var(--accent);
+}
+
