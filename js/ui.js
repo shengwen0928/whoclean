@@ -955,7 +955,7 @@ function getCurrentDutyInfo() {
 }
 
 // 共用的 Teams Webhook 發送邏輯 (Adaptive Card)
-async function sendDutyWebhook(webhookUrl, { title, titleColor, containerStyle, rangeLabel, footerText, successMsg }) {
+async function sendDutyWebhook(webhookUrl, { title, titleColor, containerStyle, rangeLabel, footerText, successMsg, cardIcon = "🧹" }) {
     const duty = getCurrentDutyInfo();
     if (!duty) {
         showToast('本週尚未排定值日生，無法發送通知！', 'warning');
@@ -980,7 +980,7 @@ async function sendDutyWebhook(webhookUrl, { title, titleColor, containerStyle, 
                                 width: "auto",
                                 verticalContentAlignment: "Center",
                                 items: [
-                                    { type: "TextBlock", text: "🧹", size: "ExtraLarge" }
+                                    { type: "TextBlock", text: cardIcon, size: "ExtraLarge" }
                                 ]
                             },
                             {
@@ -1123,12 +1123,13 @@ export async function sendPersonalTeamsNotification() {
     }
 
     await sendDutyWebhook(webhookUrl, {
-        title: "🔔 WhoClean 值日生個人通知",
+        title: "WhoClean 值日生個人通知",
         titleColor: "Good",
         containerStyle: "good",
         rangeLabel: "打掃區間:",
         footerText: "這是您自己設定的個人通知，提醒您注意打掃輪值！",
-        successMsg: '已發送個人提醒至您的 Teams！'
+        successMsg: '已發送個人提醒至您的 Teams！',
+        cardIcon: "🔔"
     });
 }
 
