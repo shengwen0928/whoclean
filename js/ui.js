@@ -1888,9 +1888,10 @@ export function setupEventListeners() {
         playNotification();
     });
 
-    document.getElementById('qa-export')?.addEventListener('click', () => {
-        exportData();
+    document.getElementById('qa-csv')?.addEventListener('click', () => {
+        exportCSV();
         playSuccess();
+        fireConfetti(15);
     });
 }
 
