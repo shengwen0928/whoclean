@@ -421,6 +421,11 @@
     color: var(--success);
 }
 
+.quick-action-btn .qa-slack {
+    background: rgba(74, 21, 75, 0.2);
+    color: #E01E5A;
+}
+
 /* --------------------------------------------------------------------------
    五日進度 Day Pills
    -------------------------------------------------------------------------- */
@@ -1595,6 +1600,44 @@
     border-color: var(--accent);
     background: var(--accent-soft);
     box-shadow: 0 0 15px var(--accent-glow);
+}
+
+/* ==========================================================================
+   一鍵預設任務按鈕
+   ========================================================================== */
+.task-presets {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    margin-bottom: 0.7rem;
+}
+
+.btn-preset-task {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0.3rem 0.6rem;
+    background: var(--glass-strong);
+    border: 1px solid var(--glass-border);
+    border-radius: var(--radius-full);
+    color: var(--text-2);
+    font-size: 0.72rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all var(--t-fast);
+    font-family: var(--font-sans);
+}
+
+.btn-preset-task:hover {
+    background: var(--glass-hover);
+    border-color: var(--accent-glow);
+    color: var(--accent);
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px var(--accent-glow);
+}
+
+.btn-preset-task:active {
+    transform: translateY(0);
 }
 
 /* ==========================================================================

@@ -1,4 +1,4 @@
-import { getMembers, getSchedule, addMember, removeMember, updateWeekCleaner, getTeamsWebhookUrl, saveTeamsWebhookUrl, getPersonalTeamsWebhookUrl, savePersonalTeamsWebhookUrl, saveMembers, getRotationAnchor, saveRotationAnchor } from './storage.js';
+import { getMembers, getSchedule, addMember, removeMember, updateWeekCleaner, getTeamsWebhookUrl, saveTeamsWebhookUrl, getPersonalTeamsWebhookUrl, savePersonalTeamsWebhookUrl, getSlackWebhookUrl, saveSlackWebhookUrl, saveMembers, getRotationAnchor, saveRotationAnchor, getDutyDiary, saveDutyDiary, getReminderTime, saveReminderTime } from './storage.js';
 import { getYearWeekString, getWeekRangeText, escapeHtml, getWeekStartEndDates } from './utils.js';
 import { getMicrosoftClientId, saveMicrosoftClientId, getCurrentUser, login, logout, registerWithEmail, loginWithEmail, loginWithGoogle } from './auth.js';
 import { initCustomDatePicker } from './datepicker.js';
@@ -319,8 +319,25 @@ export function updateNotificationStatus() {
 export function openMsSettingsModal() {
     elements.teamsWebhookInput.value = getTeamsWebhookUrl();
     elements.personalTeamsWebhookInput.value = getPersonalTeamsWebhookUrl();
+    const slackInput = document.getElementById('slack-webhook-input');
+    if (slackInput) slackInput.value = getSlackWebhookUrl();
+    const reminderInput = document.getElementById('reminder-time-input');
+    if (reminderInput) reminderInput.value = getReminderTime() || '08:00';
+    updateReminderStatus();
     elements.msSettingsModal.classList.add('active');
     updateNotificationStatus();
+}
+
+export function updateReminderStatus() {
+    const statusEl = document.getElementById('reminder-status');
+    if (!statusEl) return;
+    const time = getReminderTime() || '08:00';
+    const notifyPerm = ('Notification' in window && Notification.permission === 'granted');
+    if (notifyPerm) {
+        statusEl.innerHTML = `✅ 每日 ${time} 將自動檢查並提醒（需瀏覽器通知權限）`;
+    } else {
+        statusEl.innerHTML = `⏰ 已設定 ${time}，但尚未啟用瀏覽器通知（請於下方啟用）`;
+    }
 }
 
 export function closeMsSettingsModal() {
@@ -656,6 +673,12 @@ export function openEditModal(weekKey) {
     activeEditingWeekKey = weekKey;
     const schedule = getSchedule();
     const members = getMembers();
+    
+    // 載入值日生日記
+    const diaryTextarea = document.getElementById('duty-diary-textarea');
+    if (diaryTextarea) {
+        diaryTextarea.value = getDutyDiary(weekKey);
+    }
     
     const weekItem = schedule.find(s => s.weekKey === weekKey) || {
         weekKey,
@@ -1148,10 +1171,16 @@ function renderTaskList(weekKey) {
     const allTasks = getTasks();
     const weekTasks = allTasks.filter(t => t.weekKey === weekKey);
     
+    // 一鍵預設任務範本
+    const PRESET_TASKS = ['🧹 掃地', '🧽 拖地', '🗑️ 倒垃圾', '🧴 擦桌子', '🚽 洗廁所', '📦 整理公共區域'];
+    
     let html = `<div class="task-section">
         <div class="task-header">
             <div class="task-title"><i class="fa-regular fa-list-check"></i> 本週打掃任務</div>
             <span style="font-size:0.72rem;color:var(--text-3);font-weight:500;">${weekTasks.filter(t => t.done).length}/${weekTasks.length} 完成</span>
+        </div>
+        <div class="task-presets" id="task-presets">
+            ${PRESET_TASKS.map(t => `<button class="btn-preset-task" data-text="${escapeHtml(t)}">${t}</button>`).join('')}
         </div>
         <div class="task-input-row">
             <input type="text" class="form-control" id="task-input" placeholder="新增任務，例如：拖地、倒垃圾..." maxlength="50">
@@ -1172,6 +1201,20 @@ function renderTaskList(weekKey) {
     
     html += '</div>';
     container.innerHTML = html;
+    
+    // 事件綁定：預設任務按鈕
+    document.querySelectorAll('.btn-preset-task').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const text = btn.dataset.text;
+            if (!text) return;
+            const tasks = getTasks();
+            tasks.push({ id: Date.now().toString(36) + '_' + Math.random().toString(36).slice(2,5), weekKey, text, done: false, createdAt: new Date().toISOString() });
+            saveTasks(tasks);
+            renderTaskList(weekKey);
+            playClick();
+            showToast(`✅ 已新增「${text}」`, 'success');
+        });
+    });
     
     // 事件綁定
     const taskInput = document.getElementById('task-input');
@@ -1276,11 +1319,16 @@ export function exportData() {
         })(),
         teamsWebhook: getTeamsWebhookUrl(),
         personalTeamsWebhook: getPersonalTeamsWebhookUrl(),
+        slackWebhook: getSlackWebhookUrl(),
         tasks: (() => {
             try { return JSON.parse(localStorage.getItem('whoclean_tasks')) || []; }
             catch { return []; }
         })(),
-        reminderTime: localStorage.getItem('whoclean_reminder_time') || '',
+        diaries: (() => {
+            try { return JSON.parse(localStorage.getItem('whoclean_diaries')) || {}; }
+            catch { return {}; }
+        })(),
+        reminderTime: getReminderTime(),
     };
 
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
@@ -1368,8 +1416,10 @@ export function importData(file) {
             if (data.history) localStorage.setItem('whoclean_history', JSON.stringify(data.history));
             if (data.teamsWebhook) saveTeamsWebhookUrl(data.teamsWebhook);
             if (data.personalTeamsWebhook) savePersonalTeamsWebhookUrl(data.personalTeamsWebhook);
+            if (data.slackWebhook) saveSlackWebhookUrl(data.slackWebhook);
             if (data.tasks) localStorage.setItem('whoclean_tasks', JSON.stringify(data.tasks));
-            if (data.reminderTime) localStorage.setItem('whoclean_reminder_time', data.reminderTime);
+            if (data.diaries) localStorage.setItem('whoclean_diaries', JSON.stringify(data.diaries));
+            if (data.reminderTime) saveReminderTime(data.reminderTime);
             
             showToast('✅ 資料已成功匯入！', 'success');
             renderAll();
@@ -1529,6 +1579,13 @@ export function setupEventListeners() {
         const selectedIds = selectedId ? [selectedId] : [];
         
         updateWeekCleaner(activeEditingWeekKey, selectedIds);
+        
+        // 儲存值日生日記
+        const diaryTextarea = document.getElementById('duty-diary-textarea');
+        if (diaryTextarea) {
+            saveDutyDiary(activeEditingWeekKey, diaryTextarea.value);
+        }
+        
         closeEditModal();
         renderAll();
     });
@@ -1545,9 +1602,13 @@ export function setupEventListeners() {
     elements.btnSaveMsSettings.addEventListener('click', () => {
         const webhookUrl = elements.teamsWebhookInput.value;
         const personalWebhookUrl = elements.personalTeamsWebhookInput.value;
+        const slackWebhook = document.getElementById('slack-webhook-input')?.value || '';
+        const reminderTime = document.getElementById('reminder-time-input')?.value || '';
         
         saveTeamsWebhookUrl(webhookUrl);
         savePersonalTeamsWebhookUrl(personalWebhookUrl);
+        saveSlackWebhookUrl(slackWebhook);
+        saveReminderTime(reminderTime);
         
         closeMsSettingsModal();
         renderAll();
@@ -1928,6 +1989,13 @@ export function setupEventListeners() {
         exportCSV();
         playSuccess();
         fireConfetti(15);
+    });
+
+    // Slack 通知快速操作
+    document.getElementById('qa-slack')?.addEventListener('click', async () => {
+        const { sendSlackNotification } = await import('./notifications.js');
+        await sendSlackNotification();
+        playNotification();
     });
 }
 

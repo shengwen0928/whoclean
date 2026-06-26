@@ -116,6 +116,40 @@ export function savePersonalTeamsWebhookUrl(url) {
     syncToFirebase();
 }
 
+export function getSlackWebhookUrl() {
+    return localStorage.getItem('whoclean_slack_webhook') || '';
+}
+
+export function saveSlackWebhookUrl(url) {
+    localStorage.setItem('whoclean_slack_webhook', url.trim());
+    syncToFirebase();
+}
+
+export function getDutyDiary(weekKey) {
+    try {
+        const diaries = JSON.parse(localStorage.getItem('whoclean_diaries')) || {};
+        return diaries[weekKey] || '';
+    } catch { return ''; }
+}
+
+export function saveDutyDiary(weekKey, text) {
+    try {
+        const diaries = JSON.parse(localStorage.getItem('whoclean_diaries')) || {};
+        diaries[weekKey] = text.trim();
+        localStorage.setItem('whoclean_diaries', JSON.stringify(diaries));
+    } catch { /* ignore */ }
+    syncToFirebase();
+}
+
+export function getReminderTime() {
+    return localStorage.getItem('whoclean_reminder_time') || '';
+}
+
+export function saveReminderTime(timeStr) {
+    localStorage.setItem('whoclean_reminder_time', timeStr || '');
+    syncToFirebase();
+}
+
 export function getMembers() {
     let members = [];
     try {

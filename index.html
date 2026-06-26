@@ -104,6 +104,10 @@
                     <i class="fa-regular fa-bell qa-bell"></i>
                     <span>提醒自己</span>
                 </button>
+                <button class="quick-action-btn" id="qa-slack">
+                    <i class="fa-brands fa-slack qa-slack"></i>
+                    <span>Slack 通知</span>
+                </button>
                 <button class="quick-action-btn" id="qa-csv">
                     <i class="fa-solid fa-file-csv qa-download"></i>
                     <span>匯出 CSV</span>
@@ -285,6 +289,14 @@
                 <div class="member-checkbox-list" id="modal-member-checkboxes">
                     <!-- Dynamic check list -->
                 </div>
+                <!-- 值日生日記 -->
+                <div class="modal-section" style="margin-top:1rem;padding-top:1rem;border-top:1px solid var(--glass-border);">
+                    <label class="form-label" for="duty-diary-textarea">
+                        <i class="fa-regular fa-pen-to-square"></i> 值日生日記 / 備註:
+                    </label>
+                    <textarea class="form-control" id="duty-diary-textarea" placeholder="例如：這週打掃狀況、特別注意事項、下次交接提醒..." rows="3" style="resize:vertical;min-height:60px;font-size:0.82rem;"></textarea>
+                    <p class="modal-note">此備註僅供內部參考，不會發送至任何通知。</p>
+                </div>
             </div>
             <div class="modal-footer">
                 <button class="btn btn-secondary" id="btn-cancel-modal">取消</button>
@@ -319,7 +331,32 @@
                     </p>
                 </div>
 
-                <!-- Browser Desktop Notifications -->
+                <!-- Slack Webhook -->
+                <div class="modal-section bordered">
+                    <label class="form-label" for="slack-webhook-input">
+                        <i class="fa-brands fa-slack"></i> Slack Webhook URL:
+                    </label>
+                    <input type="url" class="form-control" id="slack-webhook-input" placeholder="貼上 Slack Incoming Webhook URL...">
+                    <p class="modal-note">
+                        ℹ️ 可在 Slack App 中建立「Incoming Webhook」，選擇頻道後複製 URL 至此處，即可以傳送通知到 Slack。
+                    </p>
+                </div>
+
+                <!-- Slack + 桌面通知 + 提醒排程 在同一區 -->
+                <div class="modal-section bordered">
+                    <label class="form-label">
+                        <i class="fa-regular fa-clock"></i> 每日提醒排程:
+                    </label>
+                    <div class="reminder-schedule-row">
+                        <span class="reminder-schedule-label">每日定時通知</span>
+                        <div style="display:flex;align-items:center;gap:0.5rem;">
+                            <input type="time" class="reminder-time-input" id="reminder-time-input" value="08:00">
+                            <span style="font-size:0.72rem;color:var(--text-3);">發送提醒</span>
+                        </div>
+                    </div>
+                    <div id="reminder-status" style="font-size:0.75rem;color:var(--text-3);margin-bottom:0.5rem;"></div>
+                </div>
+
                 <div class="modal-section bordered">
                     <label class="form-label">
                         <i class="fa-solid fa-desktop"></i> 瀏覽器桌面通知設定:

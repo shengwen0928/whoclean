@@ -1,7 +1,7 @@
 /**
  * Teams 通知與桌面提醒模組
  */
-import { getMembers, getSchedule, getTeamsWebhookUrl, getPersonalTeamsWebhookUrl } from './storage.js';
+import { getMembers, getSchedule, getTeamsWebhookUrl, getPersonalTeamsWebhookUrl, getSlackWebhookUrl } from './storage.js';
 import { getYearWeekString } from './utils.js';
 import { getCurrentUser } from './auth.js';
 import { showToast } from './toast.js';
@@ -207,6 +207,65 @@ export async function sendPersonalTeamsNotification() {
         successMsg: '已發送個人提醒至您的 Teams！',
         cardIcon: "🔔"
     });
+}
+
+/**
+ * 發送 Slack 通知
+ */
+export async function sendSlackNotification() {
+    const webhookUrl = getSlackWebhookUrl();
+    if (!webhookUrl) {
+        showToast('請先在設定中設定 Slack Webhook URL！', 'warning');
+        openMsSettingsModal();
+        return;
+    }
+
+    const duty = getCurrentDutyInfo();
+    if (!duty) {
+        showToast('本週尚未排定值日生，無法發送通知！', 'warning');
+        return;
+    }
+
+    const payload = {
+        blocks: [
+            {
+                type: "header",
+                text: { type: "plain_text", text: "🧹 WhoClean 本週值日生提醒", emoji: true }
+            },
+            {
+                type: "section",                    text: { type: "mrkdwn", text: `*本週值日生* \n${duty.cleanerNames}` }
+            },
+            {
+                type: "context",
+                elements: [
+                    { type: "mrkdwn", text: `📅 *${duty.weekKey}*  ·  🗓️ ${duty.dateRange}` }
+                ]
+            },
+            {
+                type: "divider"
+            },
+            {
+                type: "section",
+                text: { type: "mrkdwn", text: "請值日生記得撥空打掃，大家一起維護環境整潔喔！" }
+            }
+        ]
+    };
+
+    try {
+        const res = await fetch(webhookUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+        if (res.ok || res.type === 'opaque') {
+            showToast('已發送通知至 Slack！', 'success');
+        } else {
+            showToast(`Slack 回應異常 (HTTP ${res.status})，請確認 Webhook URL！`, 'error');
+        }
+    } catch (err) {
+        console.error(err);
+        showToast('發送失敗，請確認 Slack Webhook URL 是否正確！', 'error');
+    }
 }
 
 /**
