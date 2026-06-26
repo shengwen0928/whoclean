@@ -99,7 +99,12 @@ async function run() {
     }
 
     const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
-    let members = config.members || [];
+    // 讀取成員，相容舊格式（純字串陣列）與新格式（物件含 active）
+    const rawMembers = config.members || [];
+    let members = rawMembers
+        .map(m => typeof m === 'string' ? { name: m, active: true } : m)
+        .filter(m => m.active !== false)
+        .map(m => m.name);
     let anchor = config.anchor;
     let webhookUrl = process.env.TEAMS_WEBHOOK_URL || config.webhookUrl;
 
@@ -118,11 +123,15 @@ async function run() {
                     const cloudAnchor = cloudData.anchor;
                     const anchorMember = cloudMembers.find(m => m.id === cloudAnchor.memberId);
                     if (anchorMember) {
-                        members = cloudMembers.map(m => m.name);
+                        // 從 Firebase 同步時保留 active 狀態，過濾掉未啟用成員
+                        members = cloudMembers
+                            .filter(m => m.active !== false)
+                            .map(m => m.name);
                         anchor = {
                             weekKey: cloudAnchor.weekKey,
                             memberName: anchorMember.name
                         };
+                        console.log(`Firebase 同步完成：${members.length} 位活躍成員`);
                         if (cloudData.teamsWebhook) {
                             webhookUrl = cloudData.teamsWebhook;
                         }
@@ -148,9 +157,21 @@ async function run() {
     }
 
     if (!anchor || !members.includes(anchor.memberName)) {
-        console.error("未設定錨點 (anchor) 或錨點的成員不在列表中！");
-        process.exit(1);
+        if (members.length > 0) {
+            // 錨點成員可能已被停用或刪除，自動使用第一個活躍成員作為新錨點
+            const newAnchor = members[0];
+            console.warn(`⚠️ 原錨點成員「${anchor ? anchor.memberName : '無'}」不在活躍列表中，自動重設錨點為「${newAnchor}」（本週）`);
+            anchor = {
+                weekKey: getYearWeekString(new Date()),
+                memberName: newAnchor
+            };
+        } else {
+            console.error("無活躍成員，無法排班！");
+            process.exit(1);
+        }
     }
+
+    console.log(`活躍成員 (${members.length} 人): ${members.join(', ')}`);
 
     const today = new Date();
     const currentWeekKey = getYearWeekString(today);
@@ -173,6 +194,38 @@ async function run() {
     };
     fs.writeFileSync(path.join(__dirname, 'current_duty.json'), JSON.stringify(dutyInfo, null, 2));
     console.log("已更新並寫入 current_duty.json");
+
+    // 將本週排班結果回寫至 Firebase Firestore（歷史記錄 + 更新錨點）
+    if (config.firebaseConfig && config.firebaseConfig.projectId) {
+        try {
+            const projectId = config.firebaseConfig.projectId;
+            const firestoreBase = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents`;
+            
+            // 寫入歷史記錄
+            const historyEntry = {
+                fields: {
+                    weekKey: { stringValue: currentWeekKey },
+                    cleanerNames: { arrayValue: { values: [{ stringValue: cleanerName }] } },
+                    updatedAt: { stringValue: new Date().toISOString() }
+                }
+            };
+            
+            // 儲存到 whoclean/history/{weekKey}
+            const historyUrl = `${firestoreBase}/whoclean_history/${currentWeekKey}`;
+            const historyRes = await fetch(historyUrl, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(historyEntry)
+            });
+            if (historyRes.ok) {
+                console.log(`📜 已記錄歷史排班至 Firebase: ${currentWeekKey} → ${cleanerName}`);
+            }
+            
+            // 不強制更新 Firestore 錨點以免干擾 web app 的排班編輯
+        } catch (e) {
+            console.warn("⚠️ 寫入 Firebase 失敗（非致命）:", e.message);
+        }
+    }
 
     const adaptiveCard = {
         type: "AdaptiveCard",

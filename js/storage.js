@@ -13,12 +13,25 @@ const STORAGE_KEYS = {
 let firebaseApp = null;
 let db = null;
 let isFirebaseEnabled = false;
+let _firestoreModuleCache = null;
+
+// 快取 Firebase 模組
+async function _getFirestoreModule() {
+    if (!_firestoreModuleCache) {
+        _firestoreModuleCache = {
+            app: await import('https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js'),
+            firestore: await import('https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js'),
+        };
+    }
+    return _firestoreModuleCache;
+}
 
 // 將當前 LocalStorage 的資料同步寫入 Firebase
 async function syncToFirebase() {
     if (!isFirebaseEnabled || !db) return;
     try {
-        const { doc, setDoc } = await import('https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js');
+        const { firestore } = await _getFirestoreModule();
+        const { doc, setDoc } = firestore;
         await setDoc(doc(db, "whoclean", "settings"), {
             members: getMembers(),
             anchor: getRotationAnchor(),
@@ -50,8 +63,10 @@ export async function initStorage(config = null) {
         if (config) {
             if (config.firebaseConfig && config.firebaseConfig.apiKey) {
                 console.log("偵測到 Firebase 設定，開始初始化...");
-                const { initializeApp, getApp } = await import('https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js');
-                const { getFirestore, doc, getDoc } = await import('https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js');
+                const { app } = await _getFirestoreModule();
+                const { firestore } = await _getFirestoreModule();
+                const { initializeApp, getApp } = app;
+                const { getFirestore, doc, getDoc } = firestore;
 
                 // 若 auth.js 已初始化過 [DEFAULT] App，重複 initializeApp 會丟出 duplicate-app
                 try {
@@ -161,32 +176,6 @@ export function removeMember(id) {
     saveMembers(members);
 }
 
-export function moveMemberUp(id) {
-    const members = getMembers();
-    const idx = members.findIndex(m => m.id === id);
-    if (idx > 0) {
-        const temp = members[idx];
-        members[idx] = members[idx - 1];
-        members[idx - 1] = temp;
-        saveMembers(members);
-        return true;
-    }
-    return false;
-}
-
-export function moveMemberDown(id) {
-    const members = getMembers();
-    const idx = members.findIndex(m => m.id === id);
-    if (idx !== -1 && idx < members.length - 1) {
-        const temp = members[idx];
-        members[idx] = members[idx + 1];
-        members[idx + 1] = temp;
-        saveMembers(members);
-        return true;
-    }
-    return false;
-}
-
 export function getRotationAnchor() {
     return JSON.parse(localStorage.getItem(STORAGE_KEYS.ROTATION_ANCHOR)) || null;
 }
@@ -247,5 +236,31 @@ export function updateWeekCleaner(weekKey, cleanerIds) {
             weekKey,
             memberId: cleanerIds[0]
         });
+        
+        // 記錄到歷史
+        const allMembers = getMembers();
+        const cleanerNames = cleanerIds
+            .map(id => allMembers.find(m => m.id === id)?.name)
+            .filter(Boolean);
+        saveWeekHistory(weekKey, cleanerNames);
     }
+}
+
+// 儲存週次歷史紀錄
+export function saveWeekHistory(weekKey, cleanerNames) {
+    let history = [];
+    try {
+        history = JSON.parse(localStorage.getItem('whoclean_history')) || [];
+    } catch { history = []; }
+    
+    const existing = history.findIndex(h => h.weekKey === weekKey);
+    const entry = { weekKey, cleanerNames, updatedAt: new Date().toISOString() };
+    
+    if (existing >= 0) {
+        history[existing] = entry;
+    } else {
+        history.push(entry);
+    }
+    
+    localStorage.setItem('whoclean_history', JSON.stringify(history));
 }

@@ -6,7 +6,20 @@ if (-not (Test-Path $configPath)) {
 }
 
 $config = Get-Content -Raw $configPath | ConvertFrom-Json
-$members = $config.members
+# 讀取成員，相容舊格式（純字串陣列）與新格式（物件含 active）
+$rawMembers = $config.members
+$members = @()
+foreach ($m in $rawMembers) {
+    if ($m -is [string]) {
+        # 舊格式：純字串
+        $members += $m
+    } elseif ($m.active -ne $false) {
+        # 新格式：物件，且 active 不為 false
+        $members += $m.name
+    }
+    # active = false 者直接跳過
+}
+
 $anchor = $config.anchor
 $webhookUrl = $config.webhookUrl
 
@@ -14,6 +27,8 @@ if (-not $webhookUrl) {
     Write-Error "config.json 中未設定 webhookUrl！"
     exit 1
 }
+
+Write-Host "活躍成員 ($($members.Count) 人): $($members -join ', ')"
 
 # 2. 計算週數與值日生 (演算法與網頁端相同)
 function Get-YearWeekString([DateTime]$d) {
@@ -72,6 +87,18 @@ function Get-WeekDiff($weekStr1, $weekStr2) {
 $today = [DateTime]::Now
 $currentWeekKey = Get-YearWeekString $today
 $dateRange = Get-WeekRangeText $currentWeekKey
+
+# 若錨點成員不在活躍列表中，自動重設
+if (-not $anchor -or ($members -notcontains $anchor.memberName)) {
+    if ($members.Count -gt 0) {
+        $newAnchor = $members[0]
+        Write-Warning "原錨點成員「$($anchor.memberName)」不在活躍列表中，自動重設錨點為「$newAnchor」（本週）"
+        $anchor = @{ weekKey = $currentWeekKey; memberName = $newAnchor }
+    } else {
+        Write-Error "無活躍成員，無法排班！"
+        exit 1
+    }
+}
 
 $anchorIdx = $members.IndexOf($anchor.memberName)
 $diff = Get-WeekDiff $anchor.weekKey $currentWeekKey

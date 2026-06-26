@@ -1,48 +1,69 @@
 /* ==========================================================================
-   WhoClean — "Midnight Studio" Design System (style.css)
-   設計概念：內斂高級的深色工作室 — 近黑底、細邊框、柔和靛藍微光
-   不走霓虹路線，重點是層次、留白與克制的光感
+   WhoClean — "Nebula" Design System v2.0 (style.css)
+   設計概念：深邃星雲 × 玻璃擬態 × 霓虹微光
+   主打：層次感、通透感、動態生命力
    ========================================================================== */
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Noto+Sans+TC:wght@400;500;700;900&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Noto+Sans+TC:wght@300;400;500;700;900&family=JetBrains+Mono:wght@400;600&display=swap');
 
 :root {
-    /* Surfaces */
-    --bg: #0E0F14;
-    --bg-soft: #15161D;
-    --card: #16171F;
-    --card-hover: #1A1B25;
-    --card-raise: #1D1E29;
+    /* 主題色 — 星雲紫 */
+    --nebula-hue: 245;
+    --nebula-sat: 70%;
+    --nebula-light: 65%;
+
+    /* Surfaces — 玻璃擬態基底 */
+    --bg: #08080C;
+    --bg-soft: #0C0D14;
+    --glass: rgba(18, 20, 30, 0.55);
+    --glass-border: rgba(255, 255, 255, 0.08);
+    --glass-strong: rgba(255, 255, 255, 0.05);
+    --glass-hover: rgba(255, 255, 255, 0.08);
+    --card: rgba(22, 24, 35, 0.6);
+    --card-hover: rgba(28, 30, 45, 0.7);
+    --card-raise: rgba(30, 32, 48, 0.7);
 
     /* Lines */
-    --border: rgba(255, 255, 255, 0.07);
-    --border-strong: rgba(255, 255, 255, 0.13);
+    --border: rgba(255, 255, 255, 0.06);
+    --border-strong: rgba(255, 255, 255, 0.12);
 
-    /* Brand — 柔和靛藍 */
-    --accent: #8B95F6;
-    --accent-deep: #6E7BF2;
-    --accent-soft: rgba(124, 140, 248, 0.14);
-    --accent-softer: rgba(124, 140, 248, 0.07);
-    --accent-glow: rgba(124, 140, 248, 0.3);
+    /* Brand — 霓虹靛紫 */
+    --accent: #8B7CF8;
+    --accent-deep: #6C5CE7;
+    --accent-soft: rgba(139, 124, 248, 0.12);
+    --accent-softer: rgba(139, 124, 248, 0.06);
+    --accent-glow: rgba(139, 124, 248, 0.35);
+    --accent-glow-strong: rgba(139, 124, 248, 0.6);
+
+    /* Secondary — 青藍 */
+    --secondary: #00E5FF;
+    --secondary-soft: rgba(0, 229, 255, 0.1);
+    --secondary-glow: rgba(0, 229, 255, 0.3);
+
+    /* Warm — 珊瑚 */
+    --warm: #FF6B9D;
+    --warm-soft: rgba(255, 107, 157, 0.1);
 
     /* Text */
-    --text: #EDEEF3;
-    --text-2: #9DA2B6;
-    --text-3: #646A7E;
+    --text: #EDEEF7;
+    --text-2: #A8ACBF;
+    --text-3: #5C6072;
+    --text-muted: var(--text-3);
 
     /* Semantic */
-    --success: #4ADE80;
-    --success-soft: rgba(74, 222, 128, 0.12);
-    --warning: #FBBF24;
-    --warning-soft: rgba(251, 191, 36, 0.12);
-    --danger: #F87171;
-    --danger-soft: rgba(248, 113, 113, 0.12);
-    --info: #60A5FA;
+    --success: #00E676;
+    --success-soft: rgba(0, 230, 118, 0.1);
+    --warning: #FFD740;
+    --warning-soft: rgba(255, 215, 64, 0.1);
+    --danger: #FF5252;
+    --danger-soft: rgba(255, 82, 82, 0.1);
+    --info: #40C4FF;
 
-    /* Elevation */
-    --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.3);
-    --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.25), 0 12px 32px -16px rgba(0, 0, 0, 0.5);
-    --shadow-pop: 0 8px 20px -6px rgba(0, 0, 0, 0.5), 0 32px 64px -24px rgba(0, 0, 0, 0.6);
-    --shadow-accent: 0 4px 14px -4px rgba(110, 123, 242, 0.5);
+    /* Elevation — 玻璃效果陰影 */
+    --shadow-xs: 0 1px 3px rgba(0, 0, 0, 0.3);
+    --shadow-card: 0 8px 32px rgba(0, 0, 0, 0.4), 0 1px 3px rgba(0, 0, 0, 0.2);
+    --shadow-pop: 0 16px 48px rgba(0, 0, 0, 0.5), 0 4px 12px rgba(0, 0, 0, 0.3);
+    --shadow-accent: 0 4px 20px rgba(108, 92, 231, 0.35);
+    --shadow-glow: 0 0 30px rgba(139, 124, 248, 0.15);
 
     /* Geometry */
     --radius-sm: 8px;
@@ -53,16 +74,48 @@
 
     /* Motion */
     --t-fast: 0.15s cubic-bezier(0.4, 0, 0.2, 1);
-    --t-normal: 0.28s cubic-bezier(0.4, 0, 0.2, 1);
+    --t-normal: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    --t-slow: 0.5s cubic-bezier(0.4, 0, 0.2, 1);
     --ease-spring: cubic-bezier(0.34, 1.4, 0.64, 1);
+    --ease-bounce: cubic-bezier(0.34, 1.56, 0.64, 1);
 
     /* Type */
     --font-sans: 'Inter', 'Noto Sans TC', sans-serif;
+    --font-mono: 'JetBrains Mono', monospace;
+
+    /* BG */
+    --bg-card: var(--card-raise);
 
     /* Layers */
+    --z-bg: 0;
+    --z-content: 1;
     --z-nav: 100;
+    --z-dropdown: 200;
     --z-modal: 1000;
     --z-toast: 1100;
+}
+
+/* 主題變體 */
+[data-theme="neon"] {
+    --accent: #00FF88;
+    --accent-deep: #00CC6A;
+    --accent-soft: rgba(0, 255, 136, 0.12);
+    --accent-glow: rgba(0, 255, 136, 0.3);
+    --secondary: #FF00FF;
+}
+[data-theme="sunset"] {
+    --accent: #FF6B35;
+    --accent-deep: #E85D2C;
+    --accent-soft: rgba(255, 107, 53, 0.12);
+    --accent-glow: rgba(255, 107, 53, 0.3);
+    --secondary: #FFD700;
+}
+[data-theme="ocean"] {
+    --accent: #00B4D8;
+    --accent-deep: #0096C7;
+    --accent-soft: rgba(0, 180, 216, 0.12);
+    --accent-glow: rgba(0, 180, 216, 0.3);
+    --secondary: #48CAE4;
 }
 
 * {
@@ -86,37 +139,49 @@ body {
     text-rendering: optimizeLegibility;
 }
 
-/* 頂部極淡靛藍光暈，給畫面一點呼吸感 */
+/* 粒子畫布 */
+#particle-canvas {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 0;
+    pointer-events: none;
+}
+
+/* 背景微光疊層 */
 body::before {
     content: '';
-    position: absolute;
+    position: fixed;
     top: 0;
     left: 0;
     right: 0;
-    height: 480px;
+    height: 100vh;
     background:
-        radial-gradient(720px 320px at 20% -12%, rgba(124, 140, 248, 0.09), transparent 70%),
-        radial-gradient(640px 300px at 82% -16%, rgba(96, 165, 250, 0.06), transparent 70%);
+        radial-gradient(800px 500px at 15% -10%, rgba(139, 124, 248, 0.07), transparent 60%),
+        radial-gradient(700px 400px at 85% 20%, rgba(0, 229, 255, 0.04), transparent 60%),
+        radial-gradient(600px 400px at 50% 80%, rgba(255, 107, 157, 0.03), transparent 60%);
     pointer-events: none;
-    z-index: 0;
+    z-index: 1;
 }
 
 ::selection {
-    background: var(--accent-deep);
+    background: var(--accent);
     color: #ffffff;
 }
 
 * {
     scrollbar-width: thin;
-    scrollbar-color: rgba(255, 255, 255, 0.14) transparent;
+    scrollbar-color: rgba(255, 255, 255, 0.1) transparent;
 }
-::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar { width: 6px; height: 6px; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb {
-    background: rgba(255, 255, 255, 0.12);
+    background: rgba(255, 255, 255, 0.08);
     border-radius: var(--radius-full);
 }
-::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, 0.22); }
+::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, 0.15); }
 
 :focus-visible {
     outline: 2px solid var(--accent);
@@ -125,20 +190,31 @@ body::before {
 }
 
 /* ==========================================================================
-   導覽列
+   導覽列 — 玻璃擬態
    ========================================================================== */
 .topbar {
     position: sticky;
     top: 0;
     z-index: var(--z-nav);
-    background: rgba(14, 15, 20, 0.8);
-    backdrop-filter: blur(14px);
-    -webkit-backdrop-filter: blur(14px);
-    border-bottom: 1px solid var(--border);
+    background: rgba(8, 8, 12, 0.7);
+    backdrop-filter: blur(20px) saturate(1.4);
+    -webkit-backdrop-filter: blur(20px) saturate(1.4);
+    border-bottom: 1px solid var(--glass-border);
+}
+
+.topbar::after {
+    content: '';
+    position: absolute;
+    bottom: -1px;
+    left: 0;
+    right: 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--accent-glow), transparent);
+    opacity: 0.5;
 }
 
 .topbar-inner {
-    max-width: 1120px;
+    max-width: 1200px;
     margin: 0 auto;
     padding: 0.7rem 1.5rem;
     display: flex;
@@ -152,34 +228,45 @@ body::before {
     align-items: center;
     gap: 0.7rem;
     user-select: none;
+    cursor: pointer;
 }
 
 .brand-mark {
-    width: 38px;
-    height: 38px;
-    border-radius: 50%;
-    background: linear-gradient(135deg, var(--accent-deep) 0%, #8F9AFA 100%);
-    box-shadow: var(--shadow-accent), inset 0 1px 0 rgba(255, 255, 255, 0.25);
+    width: 40px;
+    height: 40px;
+    border-radius: var(--radius-md);
+    background: linear-gradient(135deg, var(--accent-deep) 0%, var(--accent) 50%, var(--secondary) 100%);
+    box-shadow: var(--shadow-accent), 0 0 30px var(--accent-glow);
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 1.1rem;
+    font-size: 1.2rem;
+    transition: transform var(--t-fast), box-shadow var(--t-normal);
+}
+
+.brand:hover .brand-mark {
+    transform: scale(1.05) rotate(-5deg);
+    box-shadow: var(--shadow-accent), 0 0 40px var(--accent-glow-strong);
 }
 
 .brand-text { display: flex; flex-direction: column; }
 
 .brand-name {
-    font-size: 1.06rem;
-    font-weight: 700;
-    letter-spacing: -0.01em;
+    font-size: 1.1rem;
+    font-weight: 800;
+    letter-spacing: -0.02em;
     line-height: 1.2;
-    color: var(--text);
+    background: linear-gradient(135deg, var(--text) 30%, var(--accent) 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
 }
 
 .brand-tagline {
-    font-size: 0.72rem;
+    font-size: 0.7rem;
     color: var(--text-3);
     font-weight: 500;
+    letter-spacing: 0.02em;
 }
 
 .header-actions {
@@ -188,13 +275,38 @@ body::before {
     gap: 0.6rem;
 }
 
+/* 主題切換按鈕 */
+.theme-btn {
+    width: 36px;
+    height: 36px;
+    padding: 0;
+    border-radius: var(--radius-full);
+    background: var(--glass-strong);
+    border: 1px solid var(--glass-border);
+    color: var(--text-2);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all var(--t-fast);
+    flex-shrink: 0;
+    font-size: 1rem;
+}
+
+.theme-btn:hover {
+    background: var(--glass-hover);
+    color: var(--accent);
+    border-color: var(--accent-glow);
+    transform: scale(1.1);
+}
+
 /* ==========================================================================
    主版面
    ========================================================================== */
 .page {
     position: relative;
-    z-index: 1;
-    max-width: 1120px;
+    z-index: var(--z-content);
+    max-width: 1200px;
     margin: 0 auto;
     padding: 1.8rem 1.5rem 3.5rem;
 }
@@ -212,15 +324,17 @@ body::before {
 }
 
 /* ==========================================================================
-   卡片基底
+   卡片基底 — 玻璃擬態
    ========================================================================== */
 .board-card {
     background: var(--card);
-    border: 1px solid var(--border);
+    border: 1px solid var(--glass-border);
     border-radius: var(--radius-xl);
-    box-shadow: var(--shadow-card);
+    box-shadow: var(--shadow-card), var(--shadow-glow);
     overflow: hidden;
-    animation: rise 0.4s var(--ease-spring) both;
+    animation: rise 0.5s var(--ease-spring) both;
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
 }
 
 .board-grid .board-card:nth-child(1) { animation-delay: 0.06s; }
@@ -233,7 +347,7 @@ body::before {
     gap: 0.75rem;
     flex-wrap: wrap;
     padding: 1.05rem 1.4rem 0.95rem;
-    border-bottom: 1px solid var(--border);
+    border-bottom: 1px solid var(--glass-border);
 }
 
 .board-card-title {
@@ -311,7 +425,7 @@ body::before {
 .divider::after {
     content: '';
     flex: 1;
-    border-bottom: 1px solid var(--border);
+    border-bottom: 1px solid var(--glass-border);
 }
 .divider span { padding: 0 0.8rem; }
 
@@ -332,17 +446,34 @@ body::before {
 
 /* 頁尾 */
 .page-foot {
-    margin-top: 2.6rem;
+    margin-top: 3rem;
     text-align: center;
     font-size: 0.78rem;
     font-weight: 500;
     color: var(--text-3);
+    padding: 1.5rem 0;
+    border-top: 1px solid var(--glass-border);
 }
 
 /* ---- Keyframes ---- */
 @keyframes rise {
-    from { opacity: 0; transform: translateY(10px); }
-    to   { opacity: 1; transform: translateY(0); }
+    from { opacity: 0; transform: translateY(16px) scale(0.98); }
+    to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes shimmer {
+    0% { background-position: -200% center; }
+    100% { background-position: 200% center; }
+}
+
+@keyframes pulse-glow {
+    0%, 100% { box-shadow: 0 0 20px var(--accent-glow); }
+    50% { box-shadow: 0 0 40px var(--accent-glow-strong); }
+}
+
+@keyframes float {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-6px); }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -363,7 +494,7 @@ body::before {
         font-size: 0.95rem;
     }
     .brand-tagline {
-        display: none; /* 手機上隱藏副標以節省導覽列空間 */
+        display: none;
     }
     .page {
         padding: 0.8rem;
@@ -388,5 +519,7 @@ body::before {
         width: 100%;
         min-width: 100%;
     }
+    #particle-canvas {
+        display: none; /* 手機上關閉粒子以省電 */
+    }
 }
-

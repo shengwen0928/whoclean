@@ -86,12 +86,30 @@ export function initTeamsSdk() {
 let firebaseAuth = null;
 let currentFirebaseUser = null;
 
+// 快取 Firebase 模組，避免每次操作都重新下載
+let _firebaseAppModule = null;
+let _firebaseAuthModule = null;
+
+async function _getFirebaseAppModule() {
+    if (!_firebaseAppModule) {
+        _firebaseAppModule = await import('https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js');
+    }
+    return _firebaseAppModule;
+}
+
+async function _getFirebaseAuthModule() {
+    if (!_firebaseAuthModule) {
+        _firebaseAuthModule = await import('https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js');
+    }
+    return _firebaseAuthModule;
+}
+
 // 初始化 Firebase Auth
 export async function initFirebaseAuth(config) {
     if (!config || !config.apiKey) return;
     try {
-        const { initializeApp, getApp } = await import('https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js');
-        const { getAuth, onAuthStateChanged } = await import('https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js');
+        const { initializeApp, getApp } = await _getFirebaseAppModule();
+        const { getAuth, onAuthStateChanged } = await _getFirebaseAuthModule();
         
         let app;
         try {
@@ -155,7 +173,7 @@ export async function getCurrentUser() {
 // Firebase - Email 註冊
 export async function registerWithEmail(email, password, displayName) {
     if (!firebaseAuth) throw new Error("Firebase Auth 未初始化");
-    const { createUserWithEmailAndPassword, updateProfile } = await import('https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js');
+    const { createUserWithEmailAndPassword, updateProfile } = await _getFirebaseAuthModule();
     const userCredential = await createUserWithEmailAndPassword(firebaseAuth, email, password);
     if (displayName) {
         await updateProfile(userCredential.user, { displayName });
@@ -166,7 +184,7 @@ export async function registerWithEmail(email, password, displayName) {
 // Firebase - Email 登入
 export async function loginWithEmail(email, password) {
     if (!firebaseAuth) throw new Error("Firebase Auth 未初始化");
-    const { signInWithEmailAndPassword } = await import('https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js');
+    const { signInWithEmailAndPassword } = await _getFirebaseAuthModule();
     const userCredential = await signInWithEmailAndPassword(firebaseAuth, email, password);
     return userCredential.user;
 }
@@ -174,7 +192,7 @@ export async function loginWithEmail(email, password) {
 // Firebase - Google 登入
 export async function loginWithGoogle() {
     if (!firebaseAuth) throw new Error("Firebase Auth 未初始化");
-    const { signInWithPopup, GoogleAuthProvider } = await import('https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js');
+    const { signInWithPopup, GoogleAuthProvider } = await _getFirebaseAuthModule();
     const provider = new GoogleAuthProvider();
     const result = await signInWithPopup(firebaseAuth, provider);
     return result.user;
@@ -216,7 +234,7 @@ export async function login() {
 export async function logout() {
     // 優先登出 Firebase
     if (firebaseAuth && firebaseAuth.currentUser) {
-        const { signOut } = await import('https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js');
+        const { signOut } = await _getFirebaseAuthModule();
         await signOut(firebaseAuth);
     }
 

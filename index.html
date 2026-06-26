@@ -13,8 +13,8 @@
     <!-- Microsoft Teams JS Client SDK -->
     <script src="https://res.cdn.office.net/teams-js/2.20.0/js/MicrosoftTeams.min.js" crossorigin="anonymous"></script>
     <!-- Core & Components Stylesheet -->
-    <link rel="stylesheet" href="css/style.css?v=20260611">
-    <link rel="stylesheet" href="css/components.css?v=20260611">
+    <link rel="stylesheet" href="css/style.css?v=20260626-nebula">
+    <link rel="stylesheet" href="css/components.css?v=20260626-nebula">
     <!-- Browser Favicon -->
     <link rel="icon" href="color.png" type="image/png">
     <!-- PWA Web Manifest & 行動裝置優化 -->
@@ -25,6 +25,19 @@
     <meta name="apple-mobile-web-app-title" content="WhoClean">
 </head>
 <body>
+    <!-- Splash Screen 啟動畫面 -->
+    <div class="splash-screen" id="splash-screen">
+        <div class="splash-content">
+            <div class="splash-icon">🧹</div>
+            <div class="splash-brand">WhoClean</div>
+            <div class="splash-tagline">值日生排班 · 打掃提醒</div>
+            <div class="splash-loader">
+                <div class="splash-loader-bar"></div>
+            </div>
+        </div>
+    </div>
+    <!-- 粒子動畫背景 -->
+    <canvas id="particle-canvas"></canvas>
     <!-- 導覽列 -->
     <header class="topbar">
         <div class="topbar-inner">
@@ -39,8 +52,14 @@
                 <div id="auth-status-container">
                     <!-- Dynamic auth interface -->
                 </div>
+                <button class="theme-btn" id="btn-theme-picker" title="切換主題" aria-label="切換主題">
+                    <i class="fa-solid fa-palette"></i>
+                </button>
                 <button class="btn-icon" id="btn-ms-settings" title="系統與整合設定" aria-label="系統與整合設定">
                     <i class="fa-solid fa-gear"></i>
+                </button>
+                <button class="btn-icon" id="btn-export" title="匯出資料備份" aria-label="匯出資料備份">
+                    <i class="fa-solid fa-download"></i>
                 </button>
             </div>
         </div>
@@ -52,22 +71,47 @@
             <div class="billboard-main">
                 <div class="kicker">本週值日生 ON DUTY</div>
                 <div class="duty-row">
-                    <div class="avatar giant" id="hero-avatar" style="background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);">
-                        ?
-                    </div>
+                    <div class="avatar giant skeleton skeleton-circle" id="hero-avatar"></div>
                     <div class="duty-info">
                         <div class="duty-name" id="hero-cleaners-container">
-                            <span class="hero-cleaner-name">載入中...</span>
+                            <span class="hero-cleaner-name skeleton skeleton-inline" style="width: 180px; height: 2.2rem;">載入中...</span>
                         </div>
                         <div class="duty-meta">
-                            <span class="chip" id="hero-week-str"><i class="fa-regular fa-calendar"></i> ----W--</span>
-                            <span class="chip" id="hero-date-range"><i class="fa-regular fa-clock"></i> --/-- ~ --/--</span>
+                            <span class="chip skeleton" id="hero-week-str" style="width: 120px; border: none;"><i class="fa-regular fa-calendar"></i> ----W--</span>
+                            <span class="chip skeleton" id="hero-date-range" style="width: 140px; border: none;"><i class="fa-regular fa-clock"></i> --/-- ~ --/--</span>
                         </div>
+                    </div>                </div>
+                <div class="hero-progress" id="hero-progress">
+                    <div class="day-blocks">
+                        <div class="day-block skeleton">---</div>
+                        <div class="day-block skeleton">---</div>
+                        <div class="day-block skeleton">---</div>
+                        <div class="day-block skeleton">---</div>
+                        <div class="day-block skeleton">---</div>
                     </div>
                 </div>
-                <div class="hero-progress" id="hero-progress">
-                    <!-- 五日方塊 Rendered dynamically -->
+                <div class="hero-circular-progress" id="circular-progress">
+                    <!-- Circular progress rendered by JS -->
                 </div>
+            </div>
+            <div class="billboard-side">
+                <div class="billboard-side-label">快速操作</div>
+                <button class="quick-action-btn" id="qa-teams">
+                    <i class="fa-solid fa-paper-plane qa-teams"></i>
+                    <span>通知頻道</span>
+                </button>
+                <button class="quick-action-btn" id="qa-personal">
+                    <i class="fa-regular fa-bell qa-bell"></i>
+                    <span>提醒自己</span>
+                </button>
+                <button class="quick-action-btn" id="qa-export">
+                    <i class="fa-solid fa-download qa-download"></i>
+                    <span>匯出備份</span>
+                </button>
+                <button class="quick-action-btn" id="qa-fullscreen">
+                    <i class="fa-solid fa-expand qa-fullscreen"></i>
+                    <span>全螢幕</span>
+                </button>
             </div>
         </section>
 
@@ -75,13 +119,53 @@
         <div class="board-grid">
             <!-- 排班表 -->
             <section class="board-card">
-                <div class="board-card-head head-rota">
+                <div class="board-card-head head-rota collapsible-header" id="schedule-header" style="cursor: pointer;">
                     <span class="board-card-title"><i class="fa-regular fa-calendar-days"></i> 排班表 ROTATION</span>
-                    <span class="board-card-hint">點「修改」編輯該週人員</span>
+                    <span><i class="fa-solid fa-chevron-up collapse-icon"></i></span>
                 </div>
-                <div class="board-card-body">
+                <div class="board-card-body collapsible-body" id="schedule-body">
+                    <!-- 週跳轉 -->
+                    <div class="week-jump-row">
+                        <input type="text" class="form-control" id="week-jump-input" placeholder="YYYY-Www" style="width: 120px;">
+                        <button class="week-jump-btn" id="btn-week-jump"><i class="fa-solid fa-arrow-right"></i> 跳轉</button>
+                    </div>
+                    <div class="schedule-search" style="margin-bottom: 0.8rem;">
+                        <input type="text" class="form-control" id="schedule-search-input" placeholder="🔍 搜尋排班 (姓名/週數)..." style="font-size: 0.82rem; padding: 0.45rem 0.75rem;">
+                    </div>
                     <div class="schedule-list" id="schedule-container">
-                        <!-- Dynamic content -->
+                        <div class="schedule-item">
+                            <div class="rota-num skeleton" style="border: none;">W--</div>
+                            <div class="schedule-info">
+                                <div class="schedule-week skeleton" style="width: 100px; height: 1rem;">---</div>
+                                <div class="schedule-date skeleton" style="width: 80px; height: 0.8rem; margin-top: 4px;">---</div>
+                            </div>
+                            <div class="schedule-cleaners-list">
+                                <div class="avatar md skeleton skeleton-circle"></div>
+                                <div class="schedule-cleaner-names skeleton" style="width: 60px;">---</div>
+                            </div>
+                        </div>
+                        <div class="schedule-item">
+                            <div class="rota-num skeleton" style="border: none;">W--</div>
+                            <div class="schedule-info">
+                                <div class="schedule-week skeleton" style="width: 100px; height: 1rem;">---</div>
+                                <div class="schedule-date skeleton" style="width: 80px; height: 0.8rem; margin-top: 4px;">---</div>
+                            </div>
+                            <div class="schedule-cleaners-list">
+                                <div class="avatar md skeleton skeleton-circle"></div>
+                                <div class="schedule-cleaner-names skeleton" style="width: 60px;">---</div>
+                            </div>
+                        </div>
+                        <div class="schedule-item">
+                            <div class="rota-num skeleton" style="border: none;">W--</div>
+                            <div class="schedule-info">
+                                <div class="schedule-week skeleton" style="width: 100px; height: 1rem;">---</div>
+                                <div class="schedule-date skeleton" style="width: 80px; height: 0.8rem; margin-top: 4px;">---</div>
+                            </div>
+                            <div class="schedule-cleaners-list">
+                                <div class="avatar md skeleton skeleton-circle"></div>
+                                <div class="schedule-cleaner-names skeleton" style="width: 60px;">---</div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </section>
@@ -94,7 +178,24 @@
                 </div>
                 <div class="board-card-body">
                     <div class="member-list" id="members-container">
-                        <!-- Dynamic content -->
+                        <div class="member-item">
+                            <div class="member-profile">
+                                <div class="avatar sm skeleton skeleton-circle"></div>
+                                <div>
+                                    <div class="member-name skeleton" style="width: 80px; height: 1rem;">---</div>
+                                    <div class="member-count skeleton" style="width: 50px; height: 0.7rem; margin-top: 4px;">---</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="member-item">
+                            <div class="member-profile">
+                                <div class="avatar sm skeleton skeleton-circle"></div>
+                                <div>
+                                    <div class="member-name skeleton" style="width: 80px; height: 1rem;">---</div>
+                                    <div class="member-count skeleton" style="width: 50px; height: 0.7rem; margin-top: 4px;">---</div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                     <form class="add-member-form" id="add-member-form">
                         <input type="text" class="form-control" id="new-member-name" placeholder="輸入成員姓名..." required maxlength="10" autocomplete="off">
@@ -107,8 +208,65 @@
             </section>
         </div>
 
+        <!-- 月曆檢視 -->
+        <section class="board-card" style="margin-top: 1.4rem;">
+            <div class="board-card-head head-rota">
+                <span class="board-card-title"><i class="fa-regular fa-calendar"></i> 月曆檢視 CALENDAR</span>
+            </div>
+            <div class="board-card-body" id="calendar-view-container">
+                <div class="skeleton" style="height: 200px; border-radius: var(--radius-md);"></div>
+            </div>
+        </section>
+
+        <!-- 統計儀表板 -->
+        <section class="board-card" id="stats-card" style="margin-top: 1.4rem;">
+            <div class="board-card-head head-rota collapsible-header" id="stats-header" style="cursor: pointer;">
+                <span class="board-card-title"><i class="fa-solid fa-chart-simple"></i> 統計儀表板 STATS</span>
+                <span><i class="fa-solid fa-chevron-up collapse-icon"></i></span>
+            </div>
+            <div class="board-card-body collapsible-body" id="stats-body">
+                <div class="stats-grid" id="stats-container">
+                    <div class="stat-card skeleton">
+                        <div class="stat-card-icon">🧹</div>
+                        <div class="stat-card-value">--</div>
+                        <div class="stat-card-label">本週值日</div>
+                    </div>
+                    <div class="stat-card skeleton">
+                        <div class="stat-card-icon">👥</div>
+                        <div class="stat-card-value">--</div>
+                        <div class="stat-card-label">成員人數</div>
+                    </div>
+                    <div class="stat-card skeleton">
+                        <div class="stat-card-icon">📊</div>
+                        <div class="stat-card-value">--</div>
+                        <div class="stat-card-label">已輪週數</div>
+                    </div>
+                </div>
+                <!-- 圓餅圖 -->
+                <div id="pie-chart-container"></div>
+                <!-- 值日預測 -->
+                <div id="next-duty-container"></div>
+                <!-- 歷史時間軸 -->
+                <div id="history-timeline-container"></div>
+                <!-- 本週任務清單 -->
+                <div id="task-list-container"></div>
+                <div style="display: flex; gap: 0.5rem; margin-top: 1rem;">
+                    <button class="btn btn-secondary btn-sm btn-block" id="btn-import">
+                        <i class="fa-solid fa-upload"></i> 匯入備份
+                    </button>
+                    <button class="btn btn-secondary btn-sm btn-block" id="btn-export-data">
+                        <i class="fa-solid fa-download"></i> 匯出備份
+                    </button>
+                    <button class="btn btn-secondary btn-sm btn-block" id="btn-export-csv">
+                        <i class="fa-solid fa-file-csv"></i> 匯出 CSV
+                    </button>
+                </div>
+            </div>
+        </section>
+
         <footer class="page-foot">
             WHOCLEAN © 2026 — 一起維護整潔的環境 ✨
+            <span style="display: block; margin-top: 0.4rem; font-size: 0.7rem;">按 <kbd style="background: var(--glass-strong); padding: 0.1rem 0.4rem; border-radius: 4px; font-family: var(--font-mono);">?</kbd> 查看快捷鍵</span>
         </footer>
     </main>
 
@@ -211,7 +369,12 @@
                         </div>
                         <div>
                             <label class="form-label" for="auth-password">密碼:</label>
+                            <div class="password-wrapper">
                             <input type="password" class="form-control" id="auth-password" placeholder="至少 6 位字元..." autocomplete="current-password" minlength="6" required>
+                            <button type="button" class="password-toggle" id="btn-toggle-password" tabindex="-1" aria-label="顯示/隱藏密碼">
+                                <i class="fa-regular fa-eye"></i>
+                            </button>
+                        </div>
                         </div>
                         <button type="submit" class="btn btn-primary btn-block" id="btn-email-submit" style="margin-top: 0.5rem;">登入</button>
                     </form>
@@ -255,6 +418,9 @@
                             <button type="button" class="btn btn-secondary btn-sm" id="btn-remove-avatar">
                                 <i class="fa-regular fa-trash-can"></i> 移除
                             </button>
+                            <button type="button" class="btn btn-secondary btn-sm" id="btn-pick-emoji-avatar">
+                                <i class="fa-regular fa-face-smile"></i> Emoji
+                            </button>
                         </div>
                         <p class="avatar-edit-note">支援 JPG / PNG，將自動置中裁切並壓縮成圓形頭像；未上傳時顯示姓名第一個字。</p>
                     </div>
@@ -290,10 +456,83 @@
         </div>
     </div>
 
+    <!-- Emoji 頭像選擇 Modal -->
+    <div class="modal-overlay" id="emoji-picker-modal" role="dialog" aria-modal="true" aria-labelledby="emoji-picker-title">
+        <div class="modal-content" style="max-width: 400px;">
+            <div class="modal-header">
+                <h3 class="modal-title" id="emoji-picker-title"><i class="fa-regular fa-face-smile"></i> 選擇頭像圖示</h3>
+                <button class="modal-close" id="btn-close-emoji-modal" aria-label="關閉">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="emoji-picker-grid" id="emoji-picker-grid"></div>
+            </div>
+            <div class="modal-footer" style="justify-content: center;">
+                <button class="btn btn-secondary" id="btn-close-emoji-modal-footer">取消</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 主題選擇 Modal -->
+    <div class="modal-overlay" id="theme-modal" role="dialog" aria-modal="true" aria-labelledby="theme-modal-title">
+        <div class="modal-content" style="max-width: 380px;">
+            <div class="modal-header">
+                <h3 class="modal-title" id="theme-modal-title"><i class="fa-solid fa-palette"></i> 選擇主題</h3>
+                <button class="modal-close" id="btn-close-theme-modal" aria-label="關閉">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="theme-options" id="theme-options">
+                    <div class="theme-option active" data-theme="default">
+                        <div class="theme-option-preview" style="background: linear-gradient(135deg, #6C5CE7, #00E5FF);"></div>
+                        <div class="theme-option-name">星雲紫</div>
+                    </div>
+                    <div class="theme-option" data-theme="neon">
+                        <div class="theme-option-preview" style="background: linear-gradient(135deg, #00CC6A, #FF00FF);"></div>
+                        <div class="theme-option-name">霓虹綠</div>
+                    </div>
+                    <div class="theme-option" data-theme="sunset">
+                        <div class="theme-option-preview" style="background: linear-gradient(135deg, #E85D2C, #FFD700);"></div>
+                        <div class="theme-option-name">夕陽橙</div>
+                    </div>
+                    <div class="theme-option" data-theme="ocean" style="margin-top: 0.5rem;">
+                        <div class="theme-option-preview" style="background: linear-gradient(135deg, #0096C7, #48CAE4);"></div>
+                        <div class="theme-option-name">海洋藍</div>
+                    </div>
+                    <div class="theme-option" data-theme="auto" style="margin-top: 0.5rem;">
+                        <div class="theme-option-preview" style="background: linear-gradient(135deg, #2D3436, #636E72);"></div>
+                        <div class="theme-option-name">系統自動</div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer" style="justify-content: center;">
+                <button class="btn btn-secondary" id="btn-close-theme-modal-footer">關閉</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 確認對話框 (Confirm Modal) -->
+    <div class="modal-overlay" id="confirm-modal" role="alertdialog" aria-modal="true" aria-labelledby="confirm-modal-title">
+        <div class="modal-content" style="max-width: 380px;">
+            <div class="modal-header">
+                <h3 class="modal-title" id="confirm-modal-title">確認</h3>
+                <button class="modal-close" id="btn-close-confirm-modal" aria-label="關閉">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p id="confirm-modal-message" style="text-align: center; font-size: 0.95rem; line-height: 1.6; color: var(--text-2);"></p>
+            </div>
+            <div class="modal-footer" style="justify-content: center;">
+                <button class="btn btn-secondary" id="btn-confirm-cancel">取消</button>
+                <button class="btn btn-primary" id="btn-confirm-ok" style="background: var(--danger);">確定刪除</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Toast 通知容器 -->
     <div class="toast-container" id="toast-container" aria-live="polite"></div>
 
+    <!-- Particle Background Script -->
+    <script src="js/particles.js"></script>
     <!-- Application Script entry point -->
-    <script type="module" src="js/app.js?v=20260611"></script>
+    <!-- Application Script entry point -->
+    <script type="module" src="js/app.js?v=20260626-nebula"></script>
 </body>
 </html>

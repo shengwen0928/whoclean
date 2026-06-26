@@ -1,14 +1,24 @@
 {
+  "version": "3.0",
+  "_comment": "WhoClean 設定檔 — 詳見 sync_config.js 可從 Firebase 自動同步更新",
+  "updatedAt": "",
+
   "webhookUrl": "",
+  "_webhookComment": "Teams 頻道 Webhook URL（可被 GitHub TEAMS_WEBHOOK_URL 環境變數覆寫）",
+
   "members": [
-    "張三",
-    "李四",
-    "王五"
+    { "name": "張三", "active": true, "_comment": "active: true=啟用, false=停用（停用者不參與輪值）" },
+    { "name": "李四", "active": true },
+    { "name": "王五", "active": true }
   ],
+  "_membersComment": "成員清單。相容舊版純字串格式 ['張三'] — 自動視為 active: true",
+
   "anchor": {
     "weekKey": "2026-W24",
     "memberName": "張三"
   },
+  "_anchorComment": "輪替錨點：某成員在某一週被指定為值日生，作為計算後續輪替的基準點",
+
   "firebaseConfig": {
     "apiKey": "AIzaSyAPO5nWTAGxTwdP2x_UAPjMDVFuRfjhVPQ",
     "authDomain": "appdatabase-40950.firebaseapp.com",
@@ -16,5 +26,6 @@
     "storageBucket": "appdatabase-40950.firebasestorage.app",
     "messagingSenderId": "33008912687",
     "appId": "1:33008912687:web:a880821f331b96d499f9da"
-  }
+  },
+  "_firebaseComment": "Firebase Firestore 設定。設定後 cron_scheduler.js 會自動從雲端同步最新成員/錨點/Webhook"
 }

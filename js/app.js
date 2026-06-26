@@ -1,9 +1,10 @@
 import { initStorage } from './storage.js';
-import { renderAll, setupEventListeners } from './ui.js';
+import { renderAll, setupEventListeners, setupKeyboardShortcuts } from './ui.js';
 import { initTeamsSdk, initFirebaseAuth } from './auth.js';
+import { showToast } from './toast.js';
 
 async function init() {
-    // 0. 讀取 config.json (只 fetch 一次，供 Auth 與 Storage 共用)
+    // 0. 讀取 config.json
     let config = null;
     try {
         const response = await fetch('./config.json');
@@ -17,30 +18,71 @@ async function init() {
         console.error("載入 Firebase Auth Config 失敗:", e);
     }
 
-    // 1. 初始化資料庫 (傳入 config 以啟用 Firestore 雲端同步)
+    // 1. 初始化資料庫
     await initStorage(config);
     
-    // 2. 嘗試初始化 Teams SDK 並自動取得身分 (無感登入)
+    // 2. 初始化 Teams SDK
     await initTeamsSdk();
     
-    // 將渲染函式掛載至全域，以便 auth.js 狀態改變時回呼
+    // 3. 載入儲存的主題（自動跟隨系統偏好）
+    const savedTheme = localStorage.getItem('whoclean_theme');
+    if (savedTheme && savedTheme !== 'auto') {
+        document.documentElement.setAttribute('data-theme', savedTheme);
+    } else {
+        // auto 模式：跟隨系統
+        const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+        const systemTheme = prefersDark ? 'default' : 'ocean';
+        document.documentElement.setAttribute('data-theme', systemTheme);
+        localStorage.setItem('whoclean_theme', 'auto');
+        
+        // 監聽系統主題變化
+        window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (e) => {
+            const currentTheme = localStorage.getItem('whoclean_theme');
+            if (currentTheme === 'auto') {
+                document.documentElement.setAttribute('data-theme', e.matches ? 'default' : 'ocean');
+            }
+        });
+    }
+    
+    // 掛載全域渲染
     window.renderAllAppUI = renderAll;
     
-    // 3. 綁定按鈕與表單事件
+    // 4. 綁定事件
     setupEventListeners();
+    setupKeyboardShortcuts();
     
-    // 4. 渲染主頁面 UI
-    renderAll();
+    // 5. 渲染 UI
+    await renderAll();
+    
+    // 6. 關閉 Splash Screen（若有）
+    dismissSplashScreen();
 }
 
-// 由於 type="module" 腳本是延遲執行的，此時 DOM 可能已經解析完畢
+/** 關閉 Splash 啟動畫面 */
+function dismissSplashScreen() {
+    const splash = document.getElementById('splash-screen');
+    if (splash) {
+        // 等待 loading bar 動畫跑完 + 一點緩衝
+        setTimeout(() => {
+            splash.classList.add('hidden');
+            // 播放啟動音效
+            import('./sound.js').then(({ playSplashComplete }) => {
+                setTimeout(playSplashComplete, 100);
+            }).catch(() => {});
+            // 完成後從 DOM 移除
+            setTimeout(() => splash.remove(), 700);
+        }, 400);
+    }
+}
+
+// DOM 準備好後初始化
 if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', init);
 } else {
     init();
 }
 
-// 註冊 PWA Service Worker 以支援 App 安裝功能
+// 註冊 PWA Service Worker
 if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
         navigator.serviceWorker.register('./sw.js')
