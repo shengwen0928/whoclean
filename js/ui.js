@@ -214,11 +214,23 @@ export async function renderAuthStatus() {
         document.getElementById('btn-ms-login').addEventListener('click', async () => {
             const res = await login();
             if (res.needConfig) {
-                openMsSettingsModal();
+                openMsClientIdModal();
             } else if (res.success) {
                 renderAll();
             }
         });
+        
+        // 在未登入時也提供一個小按鈕直接設定 Microsoft Client ID
+        const msClientIdBtn = document.createElement('button');
+        msClientIdBtn.className = 'btn btn-secondary btn-sm';
+        msClientIdBtn.id = 'btn-open-ms-client-id';
+        msClientIdBtn.title = 'Microsoft 登入設定';
+        msClientIdBtn.innerHTML = '<i class="fa-brands fa-microsoft"></i>';
+        msClientIdBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            openMsClientIdModal();
+        });
+        container.querySelector('div')?.appendChild(msClientIdBtn);
     }
 }
 
@@ -305,7 +317,6 @@ export function updateNotificationStatus() {
 }
 
 export function openMsSettingsModal() {
-    elements.msClientIdInput.value = getMicrosoftClientId();
     elements.teamsWebhookInput.value = getTeamsWebhookUrl();
     elements.personalTeamsWebhookInput.value = getPersonalTeamsWebhookUrl();
     elements.msSettingsModal.classList.add('active');
@@ -314,6 +325,15 @@ export function openMsSettingsModal() {
 
 export function closeMsSettingsModal() {
     elements.msSettingsModal.classList.remove('active');
+}
+
+export function openMsClientIdModal() {
+    elements.msClientIdInput.value = getMicrosoftClientId();
+    document.getElementById('ms-client-id-modal').classList.add('active');
+}
+
+export function closeMsClientIdModal() {
+    document.getElementById('ms-client-id-modal').classList.remove('active');
 }
 
 // 渲染本週五日方塊 (週一 ~ 週五)
@@ -1521,19 +1541,35 @@ export function setupEventListeners() {
         if (e.target === elements.msSettingsModal) closeMsSettingsModal();
     });
 
-    // 儲存 Microsoft 設定
+    // 儲存一般設定（僅 Teams Webhook + 通知，不含 Client ID）
     elements.btnSaveMsSettings.addEventListener('click', () => {
-        const clientId = elements.msClientIdInput.value;
         const webhookUrl = elements.teamsWebhookInput.value;
         const personalWebhookUrl = elements.personalTeamsWebhookInput.value;
         
-        saveMicrosoftClientId(clientId);
         saveTeamsWebhookUrl(webhookUrl);
         savePersonalTeamsWebhookUrl(personalWebhookUrl);
         
         closeMsSettingsModal();
         renderAll();
         showToast('設定儲存成功！', 'success');
+    });
+
+    // Microsoft Client ID 獨立彈窗
+    const msClientIdModal = document.getElementById('ms-client-id-modal');
+    
+    document.getElementById('btn-close-ms-client-id-modal')?.addEventListener('click', closeMsClientIdModal);
+    document.getElementById('btn-cancel-ms-client-id-modal')?.addEventListener('click', closeMsClientIdModal);
+    if (msClientIdModal) {
+        msClientIdModal.addEventListener('click', (e) => {
+            if (e.target === msClientIdModal) closeMsClientIdModal();
+        });
+    }
+    document.getElementById('btn-save-ms-client-id')?.addEventListener('click', () => {
+        const clientId = elements.msClientIdInput.value;
+        saveMicrosoftClientId(clientId);
+        closeMsClientIdModal();
+        renderAll();
+        showToast('Microsoft Client ID 已儲存！', 'success');
     });
 
     // 瀏覽器桌面通知啟用按鈕
